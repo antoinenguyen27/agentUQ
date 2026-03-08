@@ -1,0 +1,45 @@
+{
+  "response": {
+    "id": "openrouter_fixture",
+    "model": "openai/gpt-4o-mini",
+    "choices": [
+      {
+        "message": {
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_fixture",
+              "function": {
+                "name": "weather_lookup",
+                "arguments": "{\"city\":\"Paris\"}"
+              }
+            }
+          ]
+        },
+        "logprobs": {
+          "content": [
+            {
+              "token": "weather_lookup",
+              "logprob": -0.2,
+              "top_logprobs": [
+                {"token": "weather_lookup", "logprob": -0.2},
+                {"token": "search", "logprob": -0.9}
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "request_meta": {
+    "model": "openai/gpt-4o-mini",
+    "logprobs": true,
+    "top_logprobs": 2,
+    "provider": {"require_parameters": true},
+    "supported_parameters": ["logprobs", "top_logprobs"],
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "deterministic": true
+  }
+}
+

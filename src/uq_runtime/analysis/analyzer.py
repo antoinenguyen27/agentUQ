@@ -10,7 +10,7 @@ from uq_runtime.analysis.events import events_for_segment
 from uq_runtime.analysis.metrics import emitted_rank, margin_log, max_run, percentile, surprises, tail_mean, truncated_entropy
 from uq_runtime.analysis.policy import PolicyEngine
 from uq_runtime.analysis.segmentation import segment_record
-from uq_runtime.schemas.config import UQConfig
+from uq_runtime.schemas.config import UQConfig, resolve_thresholds
 from uq_runtime.schemas.errors import (
     LogprobsNotRequestedError,
     ProviderDroppedRequestedParameterError,
@@ -26,6 +26,7 @@ class Analyzer:
     def __init__(self, config: UQConfig | None = None) -> None:
         self.config = config or UQConfig()
         self.policy = PolicyEngine(self.config)
+        self.thresholds = resolve_thresholds(self.config.tolerance, self.config.thresholds)
 
     def _mode(self, record: GenerationRecord, capability: CapabilityReport) -> tuple[str, str, list[Event]]:
         requested = self.config.mode
@@ -183,8 +184,8 @@ class Analyzer:
                     if rank is not None:
                         off_top1_flags.append(rank > 1)
                     off_topk_flags.append(off_topk)
-            low_margin_threshold = self.config.thresholds.low_margin_log[segment.priority]
-            entropy_threshold = self.config.thresholds.entropy[segment.priority]
+            low_margin_threshold = self.thresholds.low_margin_log[segment.priority]
+            entropy_threshold = self.thresholds.entropy[segment.priority]
             metrics = SegmentMetrics(
                 token_count=len(segment_logprobs),
                 nll=sum(segment_surprises),
@@ -216,7 +217,7 @@ class Analyzer:
                 metrics=metrics,
                 metadata=segment.metadata,
             )
-            result_segment.events.extend(events_for_segment(result_segment, self.config.thresholds, mode, capability.level.value))
+            result_segment.events.extend(events_for_segment(result_segment, self.thresholds, mode, capability.level.value))
             segment_results.append(result_segment)
             all_events.extend(result_segment.events)
 

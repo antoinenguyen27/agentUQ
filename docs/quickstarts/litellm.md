@@ -15,6 +15,7 @@ pip install -e .[dev]
 from litellm import completion
 from uq_runtime.adapters.litellm import LiteLLMAdapter
 from uq_runtime.analysis.analyzer import Analyzer
+from uq_runtime.schemas.config import UQConfig
 
 response = completion(
     model="openai/gpt-4o-mini",
@@ -26,6 +27,7 @@ response = completion(
 )
 
 adapter = LiteLLMAdapter()
+analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
 request_meta = {
     "model": "openai/gpt-4o-mini",
     "logprobs": True,
@@ -34,7 +36,7 @@ request_meta = {
     "deterministic": True,
 }
 record = adapter.capture(response, request_meta)
-result = Analyzer().analyze_step(record, adapter.capability_report(response, request_meta))
+result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
 print(result.capability_report)
 ```
 
@@ -42,6 +44,7 @@ print(result.capability_report)
 
 - Prefer `drop_params=False` in UQ-critical paths.
 - If you can collect `supported_openai_params`, pass them into `request_meta` so capability reporting is explicit.
+- Use this path for optional local live smoke tests only; it is not part of the required offline suite.
 
 ## Sample output excerpt
 

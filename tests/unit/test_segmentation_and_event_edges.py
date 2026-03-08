@@ -77,3 +77,4 @@ def test_low_margin_entropy_and_off_top1_events_are_emitted():
     assert "HIGH_ENTROPY_CLUSTER" in event_types
     assert "OFF_TOP1_BURST" in event_types
     assert "ACTION_HEAD_UNCERTAIN" in event_types
+

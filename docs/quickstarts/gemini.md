@@ -15,6 +15,7 @@ pip install -e .[dev]
 from google import genai
 from uq_runtime.adapters.gemini import GeminiAdapter
 from uq_runtime.analysis.analyzer import Analyzer
+from uq_runtime.schemas.config import UQConfig
 
 client = genai.Client()
 response = client.models.generate_content(
@@ -28,9 +29,10 @@ response = client.models.generate_content(
 )
 
 adapter = GeminiAdapter()
+analyzer = Analyzer(UQConfig(policy="balanced", tolerance="balanced"))
 request_meta = {"model": "gemini-2.5-flash", "responseLogprobs": True, "logprobs": 5, "deterministic": True}
 record = adapter.capture(response, request_meta)
-result = Analyzer().analyze_step(record, adapter.capability_report(response, request_meta))
+result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
 print(result.mode, result.action)
 ```
 
@@ -49,3 +51,4 @@ primary_score_type=g_nll
 
 - If `responseLogprobs` is absent, Gemini will not return chosen-token logprobs.
 - If `logprobs` is omitted, AgentUQ will degrade to selected-only capability.
+- Use this example for optional local drift/smoke checks, not required CI.

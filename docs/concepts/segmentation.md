@@ -20,5 +20,4 @@ Whole-response scoring is too blunt for agent systems. AgentUQ segments generati
 - `informational`: final answer prose
 - `low_priority`: reasoning text
 
-Policies are stricter on higher-priority segments.
-
+Higher-priority segments use stricter tolerance thresholds and stricter default actions.

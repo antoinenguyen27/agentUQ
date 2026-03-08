@@ -1,0 +1,40 @@
+{
+  "response": {
+    "id": "resp_agents_fixture",
+    "model": "gpt-4.1-mini",
+    "output": [
+      {
+        "type": "function_call",
+        "name": "weather_lookup",
+        "arguments": "{\"city\":\"Paris\"}"
+      },
+      {
+        "type": "message",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "",
+            "logprobs": [
+              {
+                "token": "weather_lookup",
+                "logprob": -0.2,
+                "top_logprobs": [
+                  {"token": "weather_lookup", "logprob": -0.2},
+                  {"token": "search", "logprob": -0.8}
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "request_meta": {
+    "include_output_text_logprobs": true,
+    "top_logprobs": 2,
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "deterministic": true
+  }
+}
+

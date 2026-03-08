@@ -737,18 +737,34 @@ The policy engine supports these actions:
 
 #### `conservative`
 
-* lower thresholds,
 * more retries,
 * confirmation for medium-risk external actions,
 * block on schema failures or action-head instability.
 
 #### `aggressive`
 
-* higher thresholds,
 * fewer retries,
 * mainly annotative except for critical action spans.
 
-### 10.4 Default decision rules
+### 10.4 Built-in tolerance presets
+
+#### `strict`
+
+* emit events earlier,
+* use lower surprise thresholds and higher low-margin sensitivity,
+* suitable for high-trust or side-effectful workflows.
+
+#### `balanced` (default)
+
+* baseline event sensitivity,
+* recommended for most integrations.
+
+#### `lenient`
+
+* emit fewer events,
+* require stronger evidence before flagging a segment.
+
+### 10.5 Default decision rules
 
 #### Tool name
 
@@ -774,7 +790,7 @@ The policy engine supports these actions:
 * if only prose and no side effect: `continue_with_annotation` by default
 * if answering in high-trust workflow: `retry_step` or hand off to verifier configured by user
 
-### 10.5 Custom rule API
+### 10.6 Custom rule API
 
 Developers can define custom rules declaratively or programmatically.
 
@@ -813,7 +829,8 @@ class MyPolicy(Policy):
 UQConfig(
     mode="auto",  # auto | canonical | realized
     policy="balanced",  # conservative | balanced | aggressive | custom
-    thresholds=ThresholdConfig(...),
+    tolerance="balanced",  # strict | balanced | lenient
+    thresholds=ThresholdConfig(...),  # optional numeric overrides
     segmentation=SegmentationConfig(...),
     integrations=IntegrationConfig(...),
 )
@@ -825,9 +842,17 @@ UQConfig(
 * `canonical`: require deterministic conditions; otherwise raise `TEMPERATURE_MISMATCH`
 * `realized`: always use realized-path mode
 
-### 11.3 Threshold config
+### 11.3 Tolerance presets
 
-Thresholds are grouped by metric and segment priority, not one universal number.
+Tolerance presets define the base threshold table used for event emission.
+
+* `strict`: earlier event emission
+* `balanced`: baseline defaults
+* `lenient`: later event emission
+
+### 11.4 Threshold config
+
+Thresholds are grouped by metric and segment priority, not one universal number. These values act as overrides on top of the selected tolerance preset.
 
 Example:
 
@@ -848,10 +873,13 @@ ThresholdConfig(
         "important_action": 4.0,
         "informational": 5.0,
     },
+    min_run=2,
 )
 ```
 
-### 11.4 Why no single global threshold
+Partial overrides are valid. Missing values fall back to the selected tolerance preset.
+
+### 11.5 Why no single global threshold
 
 Raw probability metrics vary by:
 
@@ -863,15 +891,15 @@ Raw probability metrics vary by:
 
 Therefore the product must not pretend one global scalar threshold is universally meaningful.
 
-### 11.5 User overrides
+### 11.6 User overrides
 
 Users may override:
 
-* built-in thresholds,
-* event enable / disable,
-* per-segment decision actions,
-* allowed retries,
-* destructive-action confirmation requirements.
+* built-in tolerance presets,
+* specific numeric thresholds,
+* per-segment decision actions via custom rules.
+
+This version does not expose first-class event enable / disable toggles or a separate destructive-action confirmation settings surface.
 
 ---
 
@@ -1756,6 +1784,22 @@ The repo must ship runnable examples for:
 * LiteLLM unsupported parameter behavior,
 * provider returned structure but no token details,
 * how to force fail-loud mode.
+
+### 17.8.1 Testing strategy for public OSS
+
+The repo should use a three-tier testing strategy:
+
+* `tests/unit` for deterministic offline tests,
+* `tests/contracts` for sanitized real-payload fixture coverage,
+* `tests/live` for optional manual smoke tests with local API keys.
+
+Rules:
+
+* live tests are optional and manually triggered,
+* live tests are not part of required public OSS CI,
+* live tests exist to detect API drift and verify example integration paths,
+* live tests must not assert exact score values or exact output text,
+* contract fixtures are the preferred offline mechanism for payload-shape regression coverage.
 
 ### 17.9 Concept docs are mandatory
 

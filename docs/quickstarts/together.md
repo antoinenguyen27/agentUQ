@@ -15,6 +15,7 @@ pip install -e .[dev]
 from together import Together
 from uq_runtime.adapters.together import TogetherAdapter
 from uq_runtime.analysis.analyzer import Analyzer
+from uq_runtime.schemas.config import UQConfig
 
 client = Together(api_key="...")
 response = client.chat.completions.create(
@@ -25,9 +26,10 @@ response = client.chat.completions.create(
 )
 
 adapter = TogetherAdapter()
+analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
 request_meta = {"model": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "logprobs": 5, "deterministic": True}
 record = adapter.capture(response, request_meta)
-result = Analyzer().analyze_step(record, adapter.capability_report(response, request_meta))
+result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
 print(result.events)
 ```
 
@@ -42,3 +44,4 @@ action=ask_user_confirmation
 
 - Together uses `logprobs=k` rather than separate `top_logprobs`.
 - Verify that the response includes `tokens`, `token_logprobs`, and `top_logprobs`.
+- Together-backed smoke checks should be run locally with your own API key, not in required CI.

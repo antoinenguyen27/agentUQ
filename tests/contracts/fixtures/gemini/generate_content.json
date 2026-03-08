@@ -1,0 +1,37 @@
+{
+  "response": {
+    "responseId": "gemini_fixture",
+    "modelVersion": "gemini-2.5-flash",
+    "candidates": [
+      {
+        "content": {
+          "parts": [
+            {"text": "Paris"}
+          ]
+        },
+        "logprobsResult": {
+          "chosenCandidates": [
+            {"token": "Paris", "logProbability": -0.2}
+          ],
+          "topCandidates": [
+            {
+              "candidates": [
+                {"token": "Paris", "logProbability": -0.2},
+                {"token": "London", "logProbability": -0.8}
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "request_meta": {
+    "model": "gemini-2.5-flash",
+    "responseLogprobs": true,
+    "logprobs": 2,
+    "temperature": 0.0,
+    "topP": 1.0,
+    "deterministic": true
+  }
+}
+

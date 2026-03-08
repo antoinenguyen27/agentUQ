@@ -15,6 +15,7 @@ pip install -e .[dev]
 from openai import OpenAI
 from uq_runtime.adapters.openrouter import OpenRouterAdapter
 from uq_runtime.analysis.analyzer import Analyzer
+from uq_runtime.schemas.config import UQConfig
 
 client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key="...")
 response = client.chat.completions.create(
@@ -27,6 +28,7 @@ response = client.chat.completions.create(
 )
 
 adapter = OpenRouterAdapter()
+analyzer = Analyzer(UQConfig(policy="conservative", tolerance="strict"))
 request_meta = {
     "model": "openai/gpt-4o-mini",
     "logprobs": True,
@@ -35,7 +37,7 @@ request_meta = {
     "deterministic": True,
 }
 record = adapter.capture(response, request_meta)
-result = Analyzer().analyze_step(record, adapter.capability_report(response, request_meta))
+result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
 print(result.decision.action)
 ```
 
@@ -55,3 +57,4 @@ segment=tool_name action=retry_step_with_constraints
 
 - If `CapabilityReport.selected_token_logprobs` is false, the routed backend likely ignored logprob settings.
 - Keep fail-loud behavior on for action-critical runs.
+- This example is suitable for local live smoke testing, but not for required public CI.

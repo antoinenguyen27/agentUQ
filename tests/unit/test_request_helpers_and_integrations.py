@@ -10,7 +10,6 @@ from uq_runtime.integrations.langgraph_hook import enrich_graph_state, should_in
 from uq_runtime.integrations.openai_wrappers import UQWrappedOpenAI
 from uq_runtime.request_params import request_params
 from uq_runtime.schemas.config import UQConfig
-from uq_runtime.schemas.results import Action
 
 
 def _chat_response() -> dict:
@@ -220,9 +219,10 @@ class DummyBaseClient:
 
 def test_openai_wrapper_returns_response_result_and_decision():
     wrapped = UQWrappedOpenAI(DummyBaseClient(), UQConfig())
-    response_call = wrapped.responses.create(model="gpt-4.1-mini", include=["message.output_text.logprobs"], top_logprobs=2, temperature=0.0)
-    chat_call = wrapped.chat.completions.create(model="gpt-4o-mini", logprobs=True, top_logprobs=2, temperature=0.0)
+    response_call = wrapped.responses.create(model="gpt-4.1-mini", include=["message.output_text.logprobs"], top_logprobs=2, temperature=0.0, top_p=1.0)
+    chat_call = wrapped.chat.completions.create(model="gpt-4o-mini", logprobs=True, top_logprobs=2, temperature=0.0, top_p=1.0)
     assert response_call.result.decision is not None
     assert chat_call.result.decision is not None
     assert response_call.decision.action == response_call.result.action
     assert chat_call.decision.action == chat_call.result.action
+

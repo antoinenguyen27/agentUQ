@@ -17,6 +17,7 @@ Responses API:
 from openai import OpenAI
 from uq_runtime.adapters.openai_responses import OpenAIResponsesAdapter
 from uq_runtime.analysis.analyzer import Analyzer
+from uq_runtime.schemas.config import UQConfig
 
 client = OpenAI()
 response = client.responses.create(
@@ -39,6 +40,7 @@ response = client.responses.create(
 )
 
 adapter = OpenAIResponsesAdapter()
+analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
 record = adapter.capture(response, {
     "model": "gpt-4.1-mini",
     "temperature": 0.0,
@@ -47,7 +49,7 @@ record = adapter.capture(response, {
     "top_logprobs": 5,
     "deterministic": True,
 })
-result = Analyzer().analyze_step(record, adapter.capability_report(response, {"include_output_text_logprobs": True, "top_logprobs": 5}))
+result = analyzer.analyze_step(record, adapter.capability_report(response, {"include_output_text_logprobs": True, "top_logprobs": 5}))
 print(result.action)
 ```
 
@@ -69,3 +71,4 @@ segment=tool_argument_leaf jsonpath=$.city action=regenerate_segment
 
 - Chat Completions: pass `logprobs=True` and `top_logprobs=k`.
 - Responses: include `message.output_text.logprobs`; verify output content actually contains token details.
+- This example can be adapted into a local live smoke test, but AgentUQ does not run provider-backed tests in required OSS CI.

@@ -1,0 +1,25 @@
+{
+  "response": {
+    "id": "together_fixture",
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "output": {
+      "text": "click(selector=\"#submit\")",
+      "tokens": ["click", "(", "\"#submit\"", ")"],
+      "token_logprobs": [-0.4, -0.1, -0.6, -0.1],
+      "top_logprobs": [
+        {"click": -0.4, "type": -0.7},
+        {"(": -0.1, "[": -0.5},
+        {"\"#submit\"": -0.6, "\"#cancel\"": -0.7},
+        {")": -0.1, "]": -0.5}
+      ]
+    }
+  },
+  "request_meta": {
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "logprobs": 2,
+    "temperature": 0.4,
+    "top_p": 1.0,
+    "deterministic": false
+  }
+}
+

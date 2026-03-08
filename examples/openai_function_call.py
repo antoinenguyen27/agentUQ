@@ -28,7 +28,7 @@ def main() -> None:
     }
     request_meta = {"include_output_text_logprobs": True, "top_logprobs": 2, "temperature": 0.0, "top_p": 1.0, "deterministic": True}
     adapter = OpenAIResponsesAdapter()
-    analyzer = Analyzer(UQConfig(mode="canonical"))
+    analyzer = Analyzer(UQConfig(mode="canonical", policy="balanced", tolerance="strict"))
     record = adapter.capture(response, request_meta)
     result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
     print("capture -> analyze -> decide")
@@ -40,4 +40,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

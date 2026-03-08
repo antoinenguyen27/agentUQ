@@ -80,3 +80,4 @@ def test_tool_argument_low_prob_spike_requests_regeneration():
     assert leaf_segments
     assert any(event.type == "ARGUMENT_VALUE_UNCERTAIN" for event in leaf_segments[0].events)
     assert leaf_segments[0].recommended_action == Action.REGENERATE_SEGMENT
+

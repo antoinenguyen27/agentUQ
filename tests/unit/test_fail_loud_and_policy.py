@@ -1,5 +1,7 @@
 from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
+from pydantic import ValidationError
+
+from uq_runtime.schemas.config import TolerancePreset, UQConfig, resolve_thresholds
 from uq_runtime.schemas.errors import (
     LogprobsNotRequestedError,
     ProviderDroppedRequestedParameterError,
@@ -206,3 +208,57 @@ def test_custom_policy_rule_is_applied():
     leaf = next(segment for segment in result.segments if segment.kind == "tool_argument_leaf")
     assert leaf.recommended_action == Action.EMIT_WEBHOOK
 
+
+def test_uqconfig_defaults_to_balanced_policy_and_tolerance():
+    config = UQConfig()
+    assert config.policy.value == "balanced"
+    assert config.tolerance.value == "balanced"
+
+
+def test_invalid_tolerance_is_rejected():
+    try:
+        UQConfig(tolerance="hair_trigger")
+    except ValidationError:
+        pass
+    else:
+        raise AssertionError("Expected ValidationError")
+
+
+def test_threshold_overrides_merge_on_top_of_tolerance_preset():
+    resolved = resolve_thresholds(
+        TolerancePreset.STRICT,
+        UQConfig(thresholds={"entropy": {"critical_action": 9.9}}).thresholds,
+    )
+    assert resolved.low_margin_log["critical_action"] == 0.45
+    assert resolved.entropy["critical_action"] == 9.9
+    assert resolved.min_run == 1
+
+
+def test_tolerance_changes_event_emission_without_changing_policy():
+    record = GenerationRecord(
+        provider="openai",
+        transport="direct_api",
+        model="gpt-test",
+        temperature=0.5,
+        top_p=1.0,
+        raw_text='click(selector="#delete")',
+        selected_tokens=["click", "(", "selector", "=", '"#delete"', ")"],
+        selected_logprobs=[-0.3, -0.1, -0.1, -0.1, -3.2, -0.1],
+        top_logprobs=[
+            [TopToken(token="click", logprob=-0.3), TopToken(token="type", logprob=-0.4)],
+            [TopToken(token="(", logprob=-0.1), TopToken(token="[", logprob=-2.0)],
+            [TopToken(token="selector", logprob=-0.1), TopToken(token="target", logprob=-1.0)],
+            [TopToken(token="=", logprob=-0.1), TopToken(token=":", logprob=-2.0)],
+            [TopToken(token='"#delete"', logprob=-3.2), TopToken(token='"#cancel"', logprob=-3.3)],
+            [TopToken(token=")", logprob=-0.1), TopToken(token="]", logprob=-2.0)],
+        ],
+        metadata={"request_logprobs": True, "request_topk": 2, "deterministic": False},
+    )
+    cap = CapabilityReport(selected_token_logprobs=True, topk_logprobs=True, topk_k=2, request_attempted_logprobs=True, request_attempted_topk=2)
+    strict = Analyzer(UQConfig(mode="realized", policy="balanced", tolerance="strict")).analyze_step(record, cap)
+    lenient = Analyzer(UQConfig(mode="realized", policy="balanced", tolerance="lenient")).analyze_step(record, cap)
+    strict_selector = next(segment for segment in strict.segments if segment.kind == "browser_selector")
+    lenient_selector = next(segment for segment in lenient.segments if segment.kind == "browser_selector")
+    assert any(event.type == "LOW_PROB_SPIKE" for event in strict_selector.events)
+    assert not any(event.type == "LOW_PROB_SPIKE" for event in lenient_selector.events)
+    assert strict_selector.recommended_action == lenient_selector.recommended_action == Action.ASK_USER_CONFIRMATION

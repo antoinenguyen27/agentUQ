@@ -1,12 +1,12 @@
 # Policies
 
-AgentUQ ships with preset policies and custom rules.
+AgentUQ uses `policy` to choose actions after events are emitted. Event sensitivity is configured separately with `tolerance`.
 
 ## Presets
 
 - `balanced`: default. Annotate risky prose, regenerate risky leaves, retry or block unstable action heads.
-- `conservative`: lower thresholds and more blocking for action-bearing segments.
-- `aggressive`: fewer retries and more annotation, except for clearly critical action spans.
+- `conservative`: favor retries, confirmation, and blocking for action-bearing segments.
+- `aggressive`: favor annotation or regeneration before confirmation/blocking, except for clearly critical action spans.
 
 ## Built-in actions
 
@@ -28,6 +28,8 @@ AgentUQ ships with preset policies and custom rules.
 from uq_runtime.schemas.config import UQConfig
 
 config = UQConfig(
+    policy="balanced",
+    tolerance="strict",
     custom_rules=[
         {
             "when": {
@@ -40,3 +42,11 @@ config = UQConfig(
 )
 ```
 
+## What belongs where
+
+| Field | Purpose | Typical user | Runtime effect |
+| --- | --- | --- | --- |
+| `policy` | Choose the default response to emitted events | Most users | Changes recommended actions |
+| `tolerance` | Choose how easily events are emitted | Most users | Changes event sensitivity |
+| `thresholds` | Override specific numeric trigger values | Advanced users | Overrides parts of the selected tolerance preset |
+| `custom_rules` | Override default actions for matching cases | Advanced users | Overrides built-in policy actions |

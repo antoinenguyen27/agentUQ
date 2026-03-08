@@ -15,6 +15,7 @@ pip install -e .[dev]
 from openai import OpenAI
 from uq_runtime.adapters.fireworks import FireworksAdapter
 from uq_runtime.analysis.analyzer import Analyzer
+from uq_runtime.schemas.config import UQConfig
 
 client = OpenAI(base_url="https://api.fireworks.ai/inference/v1", api_key="...")
 response = client.chat.completions.create(
@@ -26,9 +27,10 @@ response = client.chat.completions.create(
 )
 
 adapter = FireworksAdapter()
+analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
 request_meta = {"model": "accounts/fireworks/models/llama-v3p1-8b-instruct", "logprobs": True, "top_logprobs": 5, "deterministic": True}
 record = adapter.capture(response, request_meta)
-result = Analyzer().analyze_step(record, adapter.capability_report(response, request_meta))
+result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
 print(result.action)
 ```
 
@@ -42,3 +44,4 @@ segment=sql_clause action=dry_run_verify
 
 - Fireworks is OpenAI-compatible here; request `logprobs=True` and `top_logprobs=k`.
 - If token details are missing, inspect the raw response body before assuming support.
+- In this OSS repo, live Fireworks checks are manual and opt-in.

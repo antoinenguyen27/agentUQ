@@ -1,0 +1,38 @@
+{
+  "request_meta": {
+    "model": "gpt-4o-mini",
+    "logprobs": true,
+    "top_logprobs": 2,
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "deterministic": true
+  },
+  "response_metadata": {
+    "model_name": "gpt-4o-mini",
+    "logprobs": {
+      "content": [
+        {
+          "token": "weather_lookup",
+          "logprob": -0.2,
+          "top_logprobs": [
+            {"token": "weather_lookup", "logprob": -0.2},
+            {"token": "search", "logprob": -0.8}
+          ]
+        }
+      ]
+    }
+  },
+  "additional_kwargs": {
+    "tool_calls": [
+      {
+        "id": "call_fixture",
+        "function": {
+          "name": "weather_lookup",
+          "arguments": "{\"city\":\"Paris\"}"
+        }
+      }
+    ]
+  },
+  "content": ""
+}
+

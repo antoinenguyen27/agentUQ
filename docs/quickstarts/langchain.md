@@ -14,9 +14,10 @@ pip install -e .[dev]
 ```python
 from langchain_openai import ChatOpenAI
 from uq_runtime.integrations.langchain_middleware import UQMiddleware
+from uq_runtime.schemas.config import UQConfig
 
 model = ChatOpenAI(model="gpt-4o-mini").bind(logprobs=True, top_logprobs=5)
-wrapped = UQMiddleware(model)
+wrapped = UQMiddleware(model, UQConfig(policy="balanced", tolerance="strict"))
 response = wrapped.invoke("Return a tool call for weather in Paris")
 print(response.response_metadata["uq_result"]["action"])
 ```
@@ -36,3 +37,4 @@ response.response_metadata["uq_result"]["action"] == "regenerate_segment"
 
 - Bind logprob params on the model before wrapping it.
 - If your provider adapter stores token metadata elsewhere, pass a custom `request_meta` map and normalize before analysis.
+- LangChain live checks are optional local smoke tests only.

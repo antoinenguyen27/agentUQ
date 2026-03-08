@@ -1,0 +1,24 @@
+{
+  "response": {
+    "id": "litellm_missing_fixture",
+    "model": "openai/gpt-4o-mini",
+    "choices": [
+      {
+        "message": {
+          "content": "Paris"
+        }
+      }
+    ]
+  },
+  "request_meta": {
+    "model": "openai/gpt-4o-mini",
+    "logprobs": true,
+    "top_logprobs": 2,
+    "drop_params": false,
+    "supported_openai_params": ["logprobs", "top_logprobs"],
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "deterministic": true
+  }
+}
+

@@ -28,4 +28,7 @@ packages = ["src/uq_runtime"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-
+markers = [
+  "live: opt-in smoke tests that call real providers/frameworks and require local API keys",
+  "contract: offline contract tests using sanitized captured payload fixtures",
+]

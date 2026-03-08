@@ -14,10 +14,9 @@ class Response:
 
 def main() -> None:
     state = {}
-    state = enrich_graph_state(state, Response(), UQConfig())
+    state = enrich_graph_state(state, Response(), UQConfig(policy="conservative", tolerance="strict"))
     print(should_interrupt_before_tool("browser", state))
 
 
 if __name__ == "__main__":
     main()
-

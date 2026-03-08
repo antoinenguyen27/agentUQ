@@ -8,6 +8,8 @@ This usually means the model, routed provider, or framework call path did not ac
 
 Primary NLL scoring still works with selected-token logprobs only. AgentUQ emits `MISSING_TOPK` and degrades entropy and rank diagnostics.
 
+If you want earlier event emission on borderline steps, set `tolerance="strict"` or override specific threshold values. If you want different responses to the same events, change `policy`.
+
 ## Canonical mode requested on sampled runs
 
 AgentUQ downgrades to realized mode with `TEMPERATURE_MISMATCH` when degraded mode is allowed, or raises `UnsupportedForCanonicalModeError` when fail-loud behavior is configured. Use explicit greedy settings: `temperature=0`, `top_p=1`, and deterministic metadata.
@@ -23,6 +25,10 @@ Do not use parameter dropping in UQ-critical paths. Pass `drop_params=False` and
 ## Provider returned structure but no token details
 
 Structured outputs without token logprobs are still useful for segmentation, but AgentUQ treats the run as capability tier `none` or degraded depending on config.
+
+## Live tests are being skipped
+
+Live tests are opt-in. Set `AGENTUQ_RUN_LIVE=1` and provide the relevant provider API keys in your local environment. Missing env vars produce explicit skip messages instead of failures.
 
 ## How to force fail-loud mode
 

@@ -30,6 +30,28 @@ python -m venv .venv
 pip install -e .[dev]
 ```
 
+## Testing
+
+AgentUQ uses a three-tier test strategy:
+
+- `tests/unit`: offline deterministic tests and the required default quality gate
+- `tests/contracts`: offline contract tests using sanitized captured payload fixtures
+- `tests/live`: optional maintainer/contributor smoke tests against real providers/frameworks
+
+Default pytest runs only offline tests:
+
+```bash
+python -m pytest
+```
+
+Live tests are manual, opt-in, and never required for normal OSS contribution flows:
+
+```bash
+AGENTUQ_RUN_LIVE=1 python -m pytest -m live
+```
+
+Live tests require local API keys and only assert structural invariants such as successful capture, capability detection, and `capture -> analyze -> decide` behavior. They do not assert exact model text or exact score values.
+
 ## Quick start
 
 ```python
@@ -38,7 +60,7 @@ from uq_runtime.analysis.analyzer import Analyzer
 from uq_runtime.schemas.config import UQConfig
 
 adapter = OpenAIChatAdapter()
-analyzer = Analyzer(UQConfig(mode="auto", policy="balanced"))
+analyzer = Analyzer(UQConfig(mode="auto", policy="balanced", tolerance="balanced"))
 
 record = adapter.capture(response, {
     "model": "gpt-4o-mini",
@@ -58,6 +80,23 @@ decision = result.decision
 - `CapabilityReport`: what logprob structure actually came back
 - `Analyzer`: shared scoring, segmentation, eventing, and degradation logic
 - `Decision`: policy output with segment-level actions
+
+## Configuration model
+
+- `policy`: action behavior after events are emitted
+- `tolerance`: event sensitivity preset (`strict`, `balanced`, `lenient`)
+- `thresholds`: optional numeric overrides on top of the selected tolerance preset
+- `custom_rules`: optional action overrides for specific segment and event combinations
+
+Example:
+
+```python
+config = UQConfig(
+    policy="conservative",
+    tolerance="strict",
+    thresholds={"entropy": {"critical_action": 0.9}},
+)
+```
 
 ## Capability tiers
 
@@ -96,4 +135,6 @@ Default behavior is fail-loud on missing selected-token logprobs. Top-k gaps deg
 - [Canonical vs realized](docs/concepts/canonical_vs_realized.md)
 - [Segmentation](docs/concepts/segmentation.md)
 - [Policies](docs/concepts/policies.md)
+- [Tolerance](docs/concepts/tolerance.md)
+- [Testing](docs/concepts/testing.md)
 - [Troubleshooting](docs/concepts/troubleshooting.md)

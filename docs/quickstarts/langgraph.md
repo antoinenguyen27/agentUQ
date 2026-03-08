@@ -12,8 +12,10 @@ pip install -e .[dev]
 ## Minimal pattern
 
 ```python
+from uq_runtime.schemas.config import UQConfig
 from uq_runtime.integrations.langgraph_hook import enrich_graph_state, should_interrupt_before_tool
 
+config = UQConfig(policy="conservative", tolerance="strict")
 state = enrich_graph_state(state, model_response, config)
 if should_interrupt_before_tool("weather_lookup", state):
     # route to retry, user confirmation, or human handoff
@@ -35,3 +37,4 @@ should_interrupt_before_tool("weather_lookup", state) == True
 
 - If tool execution is not being interrupted, inspect the stored `uq_result` and segment actions in graph state.
 - Keep tool nodes separate from model nodes so AgentUQ can gate side effects cleanly.
+- LangGraph-backed smoke checks are local-only and not a required contribution gate.
