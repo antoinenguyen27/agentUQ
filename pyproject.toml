@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling>=1.26.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentuq"
+version = "0.1.0"
+description = "Single-pass runtime reliability instrumentation for LLM agents using token logprobs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "AgentUQ OSS Contributors" }
+]
+dependencies = [
+  "pydantic>=2.8,<3",
+  "typing-extensions>=4.10,<5",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2,<9",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/uq_runtime"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
