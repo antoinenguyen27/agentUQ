@@ -83,6 +83,43 @@ print(result.pretty())
 - `Decision`: policy output with segment-level actions
 - `UQResult.pretty()`: human-readable multiline rendering for CLI/log usage
 
+## Pretty output
+
+Use `UQResult.pretty()` when you want a readable multiline summary for a terminal, log, or trace note:
+
+```python
+print(result.pretty())
+```
+
+Available verbosity levels:
+
+- `compact`: summary only, plus short highlights when the result is risky or degraded
+- `summary`: default. Summary plus interesting segments and triggered event explanations
+- `debug`: full summary, all segments, more metrics, and optional threshold tables
+
+Available threshold display modes:
+
+- `none`: never show threshold comparisons
+- `triggered`: default. Show measured value vs threshold only for triggered events
+- `all`: in `debug`, also print the full resolved threshold set for each segment priority
+
+Examples:
+
+```python
+print(result.pretty())
+print(result.pretty(verbosity="compact"))
+print(result.pretty(verbosity="debug", show_thresholds="all"))
+```
+
+Default `summary` output includes:
+
+- analysis mode and mode reason
+- raw primary score and score type
+- overall action and rationale
+- capability summary and warnings
+- interesting segments only
+- triggered events with explanatory threshold comparisons when available
+
 ## Configuration model
 
 - `policy`: action behavior after events are emitted
