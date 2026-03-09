@@ -20,9 +20,8 @@ def main() -> None:
     adapter = GeminiAdapter()
     record = adapter.capture(response, request_meta)
     result = Analyzer().analyze_step(record, adapter.capability_report(response, request_meta))
-    print(result.mode, result.action)
+    print(result.pretty())
 
 
 if __name__ == "__main__":
     main()
-

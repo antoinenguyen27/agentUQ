@@ -9,7 +9,7 @@ pip install together
 pip install -e .[dev]
 ```
 
-## Minimal request
+## Minimal request with readable terminal output
 
 ```python
 from together import Together
@@ -18,26 +18,44 @@ from uq_runtime.analysis.analyzer import Analyzer
 from uq_runtime.schemas.config import UQConfig
 
 client = Together(api_key="...")
+request_meta = {
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "logprobs": 5,
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "deterministic": True,
+}
 response = client.chat.completions.create(
-    model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
-    messages=[{"role": "user", "content": "Return a browser command to click submit"}],
-    logprobs=5,
-    temperature=0.0,
+    model=request_meta["model"],
+    messages=[{"role": "user", "content": "Return a browser command to click submit."}],
+    logprobs=request_meta["logprobs"],
+    temperature=request_meta["temperature"],
+    top_p=request_meta["top_p"],
 )
 
 adapter = TogetherAdapter()
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
-request_meta = {"model": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "logprobs": 5, "deterministic": True}
 record = adapter.capture(response, request_meta)
 result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
-print(result.events)
+print(result.pretty())
 ```
 
 ## Sample output excerpt
 
 ```text
-event=ARGUMENT_VALUE_UNCERTAIN
-action=ask_user_confirmation
+Summary
+  mode: canonical
+  reason: auto-selected canonical mode from strictly greedy metadata
+  score: 2.933 g_nll
+  action: continue
+  rationale: Policy preset balanced selected continue based on segment events.
+  capability: full
+
+Segments
+  browser_action [informational] -> continue
+    text: click("text=Submit")
+    metrics: score=2.933 avg_surprise=0.367 max_surprise=1.144 mean_entropy=0.883
+    events: none
 ```
 
 ## Troubleshooting

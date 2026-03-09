@@ -9,17 +9,23 @@ pip install langchain langchain-openai
 pip install -e .[dev]
 ```
 
-## Minimal request
+## Minimal request with readable terminal output
 
 ```python
 from langchain_openai import ChatOpenAI
 from uq_runtime.integrations.langchain_middleware import UQMiddleware
 from uq_runtime.schemas.config import UQConfig
+from uq_runtime.schemas.results import UQResult
 
-model = ChatOpenAI(model="gpt-4o-mini").bind(logprobs=True, top_logprobs=5)
-wrapped = UQMiddleware(model, UQConfig(policy="balanced", tolerance="strict"))
-response = wrapped.invoke("Return the single word Paris.")
-print(response.response_metadata["uq_result"]["action"])
+config = UQConfig(policy="balanced", tolerance="strict")
+model = ChatOpenAI(model="gpt-4o-mini", temperature=0.0).bind(logprobs=True, top_logprobs=5)
+wrapped = UQMiddleware(model, config)
+response = wrapped.invoke(
+    "Return the single word Paris.",
+    config={"metadata": {"top_p": 1.0, "deterministic": True}},
+)
+result = UQResult.model_validate(response.response_metadata["uq_result"])
+print(result.pretty())
 ```
 
 ## Notes
@@ -33,7 +39,19 @@ print(response.response_metadata["uq_result"]["action"])
 ## Sample output excerpt
 
 ```text
-response.response_metadata["uq_result"]["action"] == "continue"
+Summary
+  mode: canonical
+  reason: auto-selected canonical mode from strictly greedy metadata
+  score: 0.025 g_nll
+  action: continue
+  rationale: Policy preset balanced selected continue based on segment events.
+  capability: full
+
+Segments
+  final_answer_text [informational] -> continue
+    text: Paris.
+    metrics: score=0.025 avg_surprise=0.013 max_surprise=0.019 mean_entropy=0.108
+    events: none
 ```
 
 ## Troubleshooting

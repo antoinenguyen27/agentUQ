@@ -9,7 +9,7 @@ pip install openai
 pip install -e .[dev]
 ```
 
-## Minimal request
+## Minimal request with readable terminal output
 
 ```python
 from openai import OpenAI
@@ -18,17 +18,6 @@ from uq_runtime.analysis.analyzer import Analyzer
 from uq_runtime.schemas.config import UQConfig
 
 client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key="...")
-response = client.chat.completions.create(
-    model="openai/gpt-4o-mini",
-    messages=[{"role": "user", "content": "Return the single word Paris."}],
-    logprobs=True,
-    top_logprobs=5,
-    provider={"require_parameters": True},
-    temperature=0.0,
-)
-
-adapter = OpenRouterAdapter()
-analyzer = Analyzer(UQConfig(policy="conservative", tolerance="strict"))
 request_meta = {
     "model": "openai/gpt-4o-mini",
     "logprobs": True,
@@ -37,9 +26,21 @@ request_meta = {
     "temperature": 0.0,
     "top_p": 1.0,
 }
+response = client.chat.completions.create(
+    model=request_meta["model"],
+    messages=[{"role": "user", "content": "Return the single word Paris."}],
+    logprobs=request_meta["logprobs"],
+    top_logprobs=request_meta["top_logprobs"],
+    provider=request_meta["provider"],
+    temperature=request_meta["temperature"],
+    top_p=request_meta["top_p"],
+)
+
+adapter = OpenRouterAdapter()
+analyzer = Analyzer(UQConfig(policy="conservative", tolerance="strict"))
 record = adapter.capture(response, request_meta)
 result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
-print(result.decision.action)
+print(result.pretty())
 ```
 
 ## Notes
@@ -50,8 +51,19 @@ print(result.decision.action)
 ## Sample output excerpt
 
 ```text
-capability=full
-segment=final_answer_text action=continue
+Summary
+  mode: canonical
+  reason: auto-selected canonical mode from strictly greedy metadata
+  score: 0.028 g_nll
+  action: continue
+  rationale: Policy preset conservative selected continue based on segment events.
+  capability: full
+
+Segments
+  final_answer_text [informational] -> continue
+    text: Paris.
+    metrics: score=0.028 avg_surprise=0.014 max_surprise=0.021 mean_entropy=0.118
+    events: none
 ```
 
 ## Troubleshooting

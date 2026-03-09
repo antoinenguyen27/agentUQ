@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 from uq_runtime.integrations.langchain_middleware import UQMiddleware
+from uq_runtime.schemas.results import UQResult
 
 
 @dataclass
@@ -27,7 +28,7 @@ class DummyResponse:
 def main() -> None:
     model = UQMiddleware(DummyModel())
     response = model.invoke("city")
-    print(response.response_metadata["uq_result"]["action"])
+    print(UQResult.model_validate(response.response_metadata["uq_result"]).pretty())
 
 
 if __name__ == "__main__":

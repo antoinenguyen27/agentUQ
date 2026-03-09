@@ -29,11 +29,7 @@ def main() -> None:
     analyzer = Analyzer(UQConfig(mode="canonical", policy="balanced", tolerance="strict"))
     record = adapter.capture(response, request_meta)
     result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
-    print("capture -> analyze -> decide")
-    print(result.primary_score_type, result.action)
-    for segment in result.segments:
-        if segment.events:
-            print(segment.kind, segment.text, [event.type for event in segment.events], segment.recommended_action)
+    print(result.pretty())
 
 
 if __name__ == "__main__":

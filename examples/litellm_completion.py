@@ -12,9 +12,8 @@ def main() -> None:
     adapter = LiteLLMAdapter()
     record = adapter.capture(response, request_meta)
     result = Analyzer().analyze_step(record, adapter.capability_report(response, request_meta))
-    print(result.action)
+    print(result.pretty())
 
 
 if __name__ == "__main__":
     main()
-

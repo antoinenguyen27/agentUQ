@@ -72,6 +72,7 @@ record = adapter.capture(response, {
 })
 result = analyzer.analyze_step(record, adapter.capability_report(response, {"logprobs": True, "top_logprobs": 5}))
 decision = result.decision
+print(result.pretty())
 ```
 
 ## Core objects
@@ -80,6 +81,7 @@ decision = result.decision
 - `CapabilityReport`: what logprob structure actually came back
 - `Analyzer`: shared scoring, segmentation, eventing, and degradation logic
 - `Decision`: policy output with segment-level actions
+- `UQResult.pretty()`: human-readable multiline rendering for CLI/log usage
 
 ## Configuration model
 

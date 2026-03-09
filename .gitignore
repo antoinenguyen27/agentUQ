@@ -29,6 +29,7 @@ htmlcov/
 .ruff_cache/
 .pyre/
 .hypothesis/
+quickstart_playgrounds
 
 # Local environment files
 .env

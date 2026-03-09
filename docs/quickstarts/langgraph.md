@@ -9,17 +9,21 @@ pip install langgraph langchain-openai
 pip install -e .[dev]
 ```
 
-## Minimal pattern
+## Minimal pattern with readable terminal output
 
 ```python
-from uq_runtime.schemas.config import UQConfig
+from langchain_openai import ChatOpenAI
 from uq_runtime.integrations.langgraph_hook import enrich_graph_state, should_interrupt_before_tool
+from uq_runtime.schemas.config import UQConfig
+from uq_runtime.schemas.results import UQResult
 
 config = UQConfig(policy="conservative", tolerance="strict")
-state = enrich_graph_state(state, model_response, config)
-if should_interrupt_before_tool("weather_lookup", state):
-    # route to retry, user confirmation, or human handoff
-    ...
+model = ChatOpenAI(model="gpt-4o-mini", temperature=0.0).bind(logprobs=True, top_logprobs=5)
+response = model.invoke("Return the single word Paris.")
+state = enrich_graph_state({}, response, config, {"top_p": 1.0, "deterministic": True})
+result = UQResult.model_validate(state["uq_result"])
+print(result.pretty())
+print(f"should_interrupt_before_tool('weather_lookup'): {should_interrupt_before_tool('weather_lookup', state)}")
 ```
 
 ## Notes
@@ -31,7 +35,19 @@ if should_interrupt_before_tool("weather_lookup", state):
 ## Sample output excerpt
 
 ```text
-should_interrupt_before_tool("weather_lookup", state) == False
+Summary
+  mode: canonical
+  reason: auto-selected canonical mode from strictly greedy metadata
+  score: 0.025 g_nll
+  action: continue
+  rationale: Policy preset conservative selected continue based on segment events.
+  capability: full
+
+Segments
+  final_answer_text [informational] -> continue
+    text: Paris.
+    metrics: score=0.025 avg_surprise=0.013 max_surprise=0.019 mean_entropy=0.108
+    events: none
 ```
 
 ## Troubleshooting

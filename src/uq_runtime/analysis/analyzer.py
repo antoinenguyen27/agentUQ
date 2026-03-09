@@ -146,6 +146,7 @@ class Analyzer:
                 events=[Event(type="MISSING_LOGPROBS", severity=EventSeverity.CRITICAL, message="Critical workflow configured to block without signal.")],
                 action=Action.BLOCK_EXECUTION,
                 diagnostics=diagnostics,
+                resolved_thresholds=self.thresholds,
             )
             result.decision = self.policy.decide(result)
             return result
@@ -243,6 +244,7 @@ class Analyzer:
             events=all_events,
             action=Action.CONTINUE,
             diagnostics=diagnostics,
+            resolved_thresholds=self.thresholds,
         )
         decision = self.policy.decide(result)
         result.action = decision.action

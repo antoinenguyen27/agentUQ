@@ -29,7 +29,7 @@ def main() -> None:
     request_meta = {"response_include": ["message.output_text.logprobs"], "top_logprobs": 2, "temperature": 0.0, "top_p": 1.0}
     record = adapter.capture(response, request_meta)
     result = Analyzer().analyze_step(record, adapter.capability_report(response, request_meta))
-    print(result.action)
+    print(result.pretty())
 
 
 if __name__ == "__main__":

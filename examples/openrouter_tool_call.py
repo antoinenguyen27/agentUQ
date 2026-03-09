@@ -25,8 +25,7 @@ def main() -> None:
     adapter = OpenRouterAdapter()
     record = adapter.capture(response, request_meta)
     result = Analyzer().analyze_step(record, adapter.capability_report(response, request_meta))
-    print(result.capability_report)
-    print(result.decision.action)
+    print(result.pretty())
 
 
 if __name__ == "__main__":

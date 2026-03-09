@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from uq_runtime.schemas.config import ThresholdConfig
 from uq_runtime.schemas.records import CapabilityLevel, CapabilityReport
 
 
@@ -103,4 +104,13 @@ class UQResult(BaseModel):
     action: Action
     diagnostics: Diagnostics = Field(default_factory=Diagnostics)
     decision: Decision | None = None
+    resolved_thresholds: ThresholdConfig | None = None
 
+    def pretty(
+        self,
+        verbosity: Literal["compact", "summary", "debug"] = "summary",
+        show_thresholds: Literal["none", "triggered", "all"] = "triggered",
+    ) -> str:
+        from uq_runtime.rendering import render_result
+
+        return render_result(self, verbosity=verbosity, show_thresholds=show_thresholds)

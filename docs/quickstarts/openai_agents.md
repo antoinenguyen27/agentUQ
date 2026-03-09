@@ -9,26 +9,36 @@ pip install openai-agents
 pip install -e .[dev]
 ```
 
-## Minimal pattern
+## Minimal pattern with readable terminal output
 
 ```python
+from agents import Agent, ModelSettings, Runner
 from uq_runtime.adapters.openai_agents import OpenAIAgentsAdapter, latest_raw_response, model_settings_with_logprobs
 from uq_runtime.analysis.analyzer import Analyzer
 from uq_runtime.schemas.config import UQConfig
 
-settings = model_settings_with_logprobs(top_logprobs=5)
+settings = model_settings_with_logprobs(top_logprobs=5, temperature=0.0, top_p=1.0)
+agent = Agent(
+    name="AgentUQ Quickstart",
+    instructions="Reply with the single word Paris.",
+    model="gpt-4.1-mini",
+    model_settings=ModelSettings(**settings),
+)
+run_result = Runner.run_sync(agent, "Return the single word Paris.")
+
+request_meta = {
+    "response_include": settings["response_include"],
+    "top_logprobs": settings["top_logprobs"],
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "deterministic": True,
+}
 adapter = OpenAIAgentsAdapter()
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
-
-# After the SDK run returns raw Responses objects:
-# run_result = Runner.run_sync(agent, "Return the single word Paris.")
 response = latest_raw_response(run_result)
-record = adapter.capture(response, {"response_include": ["message.output_text.logprobs"], "top_logprobs": 5, "temperature": 0.0, "top_p": 1.0})
-result = analyzer.analyze_step(
-    record,
-    adapter.capability_report(response, {"response_include": ["message.output_text.logprobs"], "top_logprobs": 5, "temperature": 0.0, "top_p": 1.0}),
-)
-print(result.decision.action)
+record = adapter.capture(response, request_meta)
+result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
+print(result.pretty())
 ```
 
 ## Notes
@@ -40,8 +50,19 @@ print(result.decision.action)
 ## Sample output excerpt
 
 ```text
-{'top_logprobs': 5, 'response_include': ['message.output_text.logprobs']}
-action=continue
+Summary
+  mode: canonical
+  reason: auto-selected canonical mode from strictly greedy metadata
+  score: 0.021 g_nll
+  action: continue
+  rationale: Policy preset balanced selected continue based on segment events.
+  capability: full
+
+Segments
+  final_answer_text [informational] -> continue
+    text: Paris.
+    metrics: score=0.021 avg_surprise=0.011 max_surprise=0.018 mean_entropy=0.104
+    events: none
 ```
 
 ## Troubleshooting

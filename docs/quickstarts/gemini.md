@@ -9,7 +9,7 @@ pip install google-genai
 pip install -e .[dev]
 ```
 
-## Minimal request
+## Minimal request with readable terminal output
 
 ```python
 from google import genai
@@ -18,22 +18,30 @@ from uq_runtime.analysis.analyzer import Analyzer
 from uq_runtime.schemas.config import UQConfig
 
 client = genai.Client()
+request_meta = {
+    "model": "gemini-2.5-flash",
+    "responseLogprobs": True,
+    "logprobs": 5,
+    "temperature": 0.0,
+    "topP": 1.0,
+    "deterministic": True,
+}
 response = client.models.generate_content(
-    model="gemini-2.5-flash",
-    contents="Return JSON for the weather in Paris",
+    model=request_meta["model"],
+    contents="Return JSON for the weather in Paris.",
     config={
-        "responseLogprobs": True,
-        "logprobs": 5,
-        "temperature": 0.0,
+        "responseLogprobs": request_meta["responseLogprobs"],
+        "logprobs": request_meta["logprobs"],
+        "temperature": request_meta["temperature"],
+        "topP": request_meta["topP"],
     },
 )
 
 adapter = GeminiAdapter()
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="balanced"))
-request_meta = {"model": "gemini-2.5-flash", "responseLogprobs": True, "logprobs": 5, "deterministic": True}
 record = adapter.capture(response, request_meta)
 result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
-print(result.mode, result.action)
+print(result.pretty())
 ```
 
 ## Where the adapter reads data
@@ -43,8 +51,19 @@ AgentUQ reads `candidate.logprobsResult` and normalizes chosen candidates plus t
 ## Sample output excerpt
 
 ```text
-mode=canonical
-primary_score_type=g_nll
+Summary
+  mode: canonical
+  reason: auto-selected canonical mode from strictly greedy metadata
+  score: 1.116 g_nll
+  action: continue
+  rationale: Policy preset balanced selected continue based on segment events.
+  capability: full
+
+Segments
+  json_leaf [informational] -> continue
+    text: sunny
+    metrics: score=0.387 avg_surprise=0.194 max_surprise=0.271 mean_entropy=0.574
+    events: none
 ```
 
 ## Troubleshooting

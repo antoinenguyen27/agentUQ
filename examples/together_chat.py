@@ -21,7 +21,7 @@ def main() -> None:
     adapter = TogetherAdapter()
     record = adapter.capture(response, request_meta)
     result = Analyzer().analyze_step(record, adapter.capability_report(response, request_meta))
-    print(result.events)
+    print(result.pretty())
 
 
 if __name__ == "__main__":
