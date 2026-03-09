@@ -23,6 +23,8 @@ def record_with_tool(
     request_topk: int | None = 2,
     raw_text: str = 'lookup{"city":"Paris"}',
 ) -> GenerationRecord:
+    name = "lookup"
+    arguments = '{"city":"Paris"}'
     return GenerationRecord(
         provider="openai",
         transport="direct_api",
@@ -33,7 +35,17 @@ def record_with_tool(
         selected_tokens=["lookup", '{"city"', ":", '"Paris"', "}"],
         selected_logprobs=selected_logprobs,
         top_logprobs=top_logprobs,
-        structured_blocks=[StructuredBlock(type="function_call", name="lookup", arguments='{"city":"Paris"}', text=raw_text)],
+        structured_blocks=[
+            StructuredBlock(
+                type="function_call",
+                name=name,
+                arguments=arguments,
+                text=raw_text,
+                char_start=0,
+                char_end=len(raw_text),
+                metadata={"token_grounded": True},
+            )
+        ],
         metadata={"request_logprobs": request_logprobs, "request_topk": request_topk, "deterministic": deterministic},
     )
 

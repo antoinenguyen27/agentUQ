@@ -1,6 +1,6 @@
 # Fireworks Quickstart
 
-Fireworks exposes OpenAI-compatible chat completions. AgentUQ reuses the shared OpenAI-style adapter.
+Fireworks exposes chat completions with an OpenAI-compatible `choices[0].logprobs.content` shape when you request `logprobs=True`, with compatibility fallbacks for older token-array payloads.
 
 ## Install
 
@@ -42,6 +42,6 @@ segment=sql_clause action=dry_run_verify
 
 ## Troubleshooting
 
-- Fireworks is OpenAI-compatible here; request `logprobs=True` and `top_logprobs=k`.
-- If token details are missing, inspect the raw response body before assuming support.
+- Request `logprobs=True` and `top_logprobs=k`.
+- AgentUQ prefers the OpenAI-compatible `choices[0].logprobs.content` format, and falls back to legacy token arrays or `raw_output.completion_logprobs` when needed.
 - In this OSS repo, live Fireworks checks are manual and opt-in.

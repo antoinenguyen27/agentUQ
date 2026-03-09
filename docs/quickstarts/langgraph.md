@@ -1,6 +1,6 @@
 # LangGraph Quickstart
 
-Use wrapper and hook functions around model nodes, then interrupt before tool execution when policy demands it.
+Use wrapper and hook functions around model nodes, then interrupt before tool execution when policy has explicit grounded evidence for the tool span.
 
 ## Install
 
@@ -26,11 +26,12 @@ if should_interrupt_before_tool("weather_lookup", state):
 
 - Treat each model node invocation as one `GenerationRecord`.
 - Attach `uq_result` to graph state before any tool node with side effects.
+- OpenAI-compatible framework responses usually expose tool calls structurally but not token-grounded tool-call logprobs, so `should_interrupt_before_tool(...)` only trips when AgentUQ has an explicit grounded tool segment.
 
 ## Sample output excerpt
 
 ```text
-should_interrupt_before_tool("weather_lookup", state) == True
+should_interrupt_before_tool("weather_lookup", state) == False
 ```
 
 ## Troubleshooting

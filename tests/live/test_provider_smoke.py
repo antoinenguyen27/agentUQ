@@ -7,7 +7,7 @@ import pytest
 from uq_runtime.adapters.fireworks import FireworksAdapter
 from uq_runtime.adapters.gemini import GeminiAdapter
 from uq_runtime.adapters.litellm import LiteLLMAdapter
-from uq_runtime.adapters.openai_agents import OpenAIAgentsAdapter, model_settings_with_logprobs
+from uq_runtime.adapters.openai_agents import OpenAIAgentsAdapter, latest_raw_response, model_settings_with_logprobs
 from uq_runtime.adapters.openai_chat import OpenAIChatAdapter
 from uq_runtime.adapters.openai_responses import OpenAIResponsesAdapter
 from uq_runtime.adapters.openrouter import OpenRouterAdapter
@@ -36,24 +36,13 @@ def test_live_openai_responses_smoke():
     client = _openai_client()
     response = client.responses.create(
         model=os.getenv("AGENTUQ_OPENAI_RESPONSES_MODEL", "gpt-4.1-mini"),
-        input="Return a weather_lookup tool call for Paris.",
-        tools=[{
-            "type": "function",
-            "name": "weather_lookup",
-            "strict": True,
-            "parameters": {
-                "type": "object",
-                "properties": {"city": {"type": "string"}},
-                "required": ["city"],
-                "additionalProperties": False,
-            },
-        }],
+        input="Return the single word Paris.",
         include=["message.output_text.logprobs"],
         top_logprobs=2,
         temperature=0.0,
         top_p=1.0,
     )
-    request_meta = {"include_output_text_logprobs": True, "top_logprobs": 2, "temperature": 0.0, "top_p": 1.0, "deterministic": True}
+    request_meta = {"include": ["message.output_text.logprobs"], "top_logprobs": 2, "temperature": 0.0, "top_p": 1.0, "deterministic": True}
     adapter = OpenAIResponsesAdapter()
     result = Analyzer(UQConfig(mode="auto")).analyze_step(adapter.capture(response, request_meta), adapter.capability_report(response, request_meta))
     assert_live_result(result)
@@ -184,34 +173,26 @@ def test_live_together_smoke():
 
 
 @pytest.mark.live
-def test_live_openai_agents_helper_settings_shape():
+def test_live_openai_agents_sdk_smoke():
     require_live_env("OPENAI_API_KEY")
-    settings = model_settings_with_logprobs(top_logprobs=2)
-    assert settings["top_logprobs"] == 2
-    assert settings["include"] == ["message.output_text.logprobs"]
+    try:
+        from agents import Agent, ModelSettings, Runner
+    except ImportError:
+        pytest.skip("Install openai-agents to run OpenAI Agents live smoke tests.")
 
-    client = _openai_client()
-    response = client.responses.create(
+    settings = model_settings_with_logprobs(top_logprobs=2, temperature=0.0, top_p=1.0)
+    assert settings["top_logprobs"] == 2
+    assert settings["response_include"] == ["message.output_text.logprobs"]
+
+    agent = Agent(
+        name="AgentUQ Smoke",
+        instructions="Reply with the single word Paris.",
         model=os.getenv("AGENTUQ_OPENAI_AGENTS_MODEL", "gpt-4.1-mini"),
-        input="Return a weather_lookup tool call for Paris.",
-        tools=[{
-            "type": "function",
-            "name": "weather_lookup",
-            "strict": True,
-            "parameters": {
-                "type": "object",
-                "properties": {"city": {"type": "string"}},
-                "required": ["city"],
-                "additionalProperties": False,
-            },
-        }],
-        include=settings["include"],
-        top_logprobs=settings["top_logprobs"],
-        temperature=0.0,
-        top_p=1.0,
+        model_settings=ModelSettings(**settings),
     )
-    request_meta = {"include_output_text_logprobs": True, "top_logprobs": 2, "temperature": 0.0, "top_p": 1.0, "deterministic": True}
+    run_result = Runner.run_sync(agent, "Return the single word Paris.")
+    request_meta = {"response_include": settings["response_include"], "top_logprobs": 2, "temperature": 0.0, "top_p": 1.0, "deterministic": True}
     adapter = OpenAIAgentsAdapter()
+    response = latest_raw_response(run_result)
     result = Analyzer(UQConfig(mode="auto")).analyze_step(adapter.capture(response, request_meta), adapter.capability_report(response, request_meta))
     assert_live_result(result)
-

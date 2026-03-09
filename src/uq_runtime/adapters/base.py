@@ -35,6 +35,31 @@ def as_dict(value: Any) -> Any:
     return value
 
 
+def requested_logprobs(request_meta: dict[str, Any] | None = None) -> bool:
+    request_meta = request_meta or {}
+    include = request_meta.get("include") or request_meta.get("response_include") or []
+    return bool(
+        request_meta.get("logprobs")
+        or request_meta.get("responseLogprobs")
+        or request_meta.get("include_output_text_logprobs")
+        or "message.output_text.logprobs" in include
+    )
+
+
+def requested_topk(request_meta: dict[str, Any] | None = None) -> int | None:
+    request_meta = request_meta or {}
+    if request_meta.get("top_logprobs") is not None:
+        return int(request_meta["top_logprobs"])
+    logprobs_value = request_meta.get("logprobs")
+    if isinstance(logprobs_value, int) and not isinstance(logprobs_value, bool):
+        return logprobs_value
+    if request_meta.get("responseLogprobs"):
+        gemini_topk = request_meta.get("logprobs")
+        if isinstance(gemini_topk, int) and not isinstance(gemini_topk, bool):
+            return gemini_topk
+    return request_meta.get("logprobs_k")
+
+
 def infer_capability(record: GenerationRecord, request_meta: dict | None = None, declared_support: bool | None = None) -> CapabilityReport:
     request_meta = request_meta or {}
     topk_k = len(record.top_logprobs[0]) if record.top_logprobs and record.top_logprobs[0] else None
@@ -45,8 +70,8 @@ def infer_capability(record: GenerationRecord, request_meta: dict | None = None,
         structured_blocks=bool(record.structured_blocks),
         function_call_structure=any(block.type in {"tool_call", "function_call"} for block in record.structured_blocks),
         provider_declared_support=declared_support,
-        request_attempted_logprobs=bool(request_meta.get("logprobs") or request_meta.get("responseLogprobs") or request_meta.get("include_output_text_logprobs")),
-        request_attempted_topk=request_meta.get("top_logprobs") or request_meta.get("logprobs_k"),
+        request_attempted_logprobs=requested_logprobs(request_meta),
+        request_attempted_topk=requested_topk(request_meta),
         degraded_reason=request_meta.get("degraded_reason"),
     )
 
@@ -66,4 +91,3 @@ def normalize_top_logprobs(items: list[dict[str, Any]] | None) -> list[TopToken]
 
 def block(type_: str, text: str | None = None, **kwargs: Any) -> StructuredBlock:
     return StructuredBlock(type=type_, text=text, **kwargs)
-

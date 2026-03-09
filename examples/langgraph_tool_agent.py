@@ -4,10 +4,16 @@ from uq_runtime.schemas.config import UQConfig
 
 class Response:
     def __init__(self) -> None:
-        self.content = ""
-        self.additional_kwargs = {"tool_calls": [{"id": "call_1", "function": {"name": "browser", "arguments": '{"selector":"#delete"}'}}]}
+        self.content = "Checking."
+        self.additional_kwargs = {}
+        self.tool_calls = [{"id": "call_1", "name": "browser", "args": {"selector": "#delete"}, "type": "tool_call"}]
         self.response_metadata = {
-            "logprobs": {"content": [{"token": "browser", "logprob": -0.7, "top_logprobs": [{"token": "browser", "logprob": -0.7}, {"token": "click", "logprob": -0.8}]}]},
+            "logprobs": {
+                "content": [
+                    {"token": "Checking", "logprob": -0.7, "top_logprobs": [{"token": "Checking", "logprob": -0.7}, {"token": "Looking", "logprob": -0.8}]},
+                    {"token": ".", "logprob": -0.1, "top_logprobs": [{"token": ".", "logprob": -0.1}, {"token": "!", "logprob": -0.5}]},
+                ]
+            },
             "model_name": "gpt-4o-mini",
         }
 

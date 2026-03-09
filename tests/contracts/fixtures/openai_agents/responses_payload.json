@@ -13,14 +13,22 @@
         "content": [
           {
             "type": "output_text",
-            "text": "",
+            "text": "Checking.",
             "logprobs": [
               {
-                "token": "weather_lookup",
+                "token": "Checking",
                 "logprob": -0.2,
                 "top_logprobs": [
-                  {"token": "weather_lookup", "logprob": -0.2},
-                  {"token": "search", "logprob": -0.8}
+                  {"token": "Checking", "logprob": -0.2},
+                  {"token": "Looking", "logprob": -0.8}
+                ]
+              },
+              {
+                "token": ".",
+                "logprob": -0.1,
+                "top_logprobs": [
+                  {"token": ".", "logprob": -0.1},
+                  {"token": "!", "logprob": -0.8}
                 ]
               }
             ]
@@ -30,11 +38,10 @@
     ]
   },
   "request_meta": {
-    "include_output_text_logprobs": true,
+    "response_include": ["message.output_text.logprobs"],
     "top_logprobs": 2,
     "temperature": 0.0,
     "top_p": 1.0,
     "deterministic": true
   }
 }
-

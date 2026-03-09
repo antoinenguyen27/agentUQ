@@ -13,8 +13,17 @@ def model_settings_with_logprobs(*, top_logprobs: int = 5, include_output_text_l
     settings = dict(kwargs)
     settings.setdefault("top_logprobs", top_logprobs)
     if include_output_text_logprobs:
-        settings.setdefault("include", ["message.output_text.logprobs"])
+        settings.setdefault("response_include", ["message.output_text.logprobs"])
     return settings
+
+
+def latest_raw_response(run_result: Any) -> Any:
+    raw_responses = getattr(run_result, "raw_responses", None) or []
+    if raw_responses:
+        return raw_responses[-1]
+    raise ValueError(
+        "OpenAI Agents run result did not expose raw_responses; AgentUQ requires the raw Responses object for analysis."
+    )
 
 
 class OpenAIAgentsAdapter:
@@ -26,4 +35,3 @@ class OpenAIAgentsAdapter:
 
     def capability_report(self, response: Any, request_meta: dict | None = None) -> CapabilityReport:
         return self._delegate.capability_report(as_dict(response), request_meta)
-

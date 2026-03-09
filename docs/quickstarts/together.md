@@ -1,6 +1,6 @@
 # Together Quickstart
 
-Together returns token lists, token logprobs, and top-logprob maps in its response payload.
+Together chat completions return token lists, token logprobs, and top-logprob maps under `choices[0].logprobs`.
 
 ## Install
 
@@ -43,5 +43,5 @@ action=ask_user_confirmation
 ## Troubleshooting
 
 - Together uses `logprobs=k` rather than separate `top_logprobs`.
-- Verify that the response includes `tokens`, `token_logprobs`, and `top_logprobs`.
+- Verify that `choices[0].logprobs` includes `tokens`, `token_logprobs`, and `top_logprobs`.
 - Together-backed smoke checks should be run locally with your own API key, not in required CI.

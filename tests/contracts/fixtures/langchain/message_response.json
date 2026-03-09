@@ -12,27 +12,32 @@
     "logprobs": {
       "content": [
         {
-          "token": "weather_lookup",
+          "token": "Checking",
           "logprob": -0.2,
           "top_logprobs": [
-            {"token": "weather_lookup", "logprob": -0.2},
-            {"token": "search", "logprob": -0.8}
+            {"token": "Checking", "logprob": -0.2},
+            {"token": "Looking", "logprob": -0.8}
+          ]
+        },
+        {
+          "token": ".",
+          "logprob": -0.1,
+          "top_logprobs": [
+            {"token": ".", "logprob": -0.1},
+            {"token": "!", "logprob": -0.8}
           ]
         }
       ]
     }
   },
-  "additional_kwargs": {
-    "tool_calls": [
-      {
-        "id": "call_fixture",
-        "function": {
-          "name": "weather_lookup",
-          "arguments": "{\"city\":\"Paris\"}"
-        }
-      }
-    ]
-  },
-  "content": ""
+  "additional_kwargs": {},
+  "tool_calls": [
+    {
+      "id": "call_fixture",
+      "name": "weather_lookup",
+      "args": {"city": "Paris"},
+      "type": "tool_call"
+    }
+  ],
+  "content": "Checking."
 }
-

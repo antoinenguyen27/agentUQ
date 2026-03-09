@@ -22,18 +22,7 @@ from uq_runtime.schemas.config import UQConfig
 client = OpenAI()
 response = client.responses.create(
     model="gpt-4.1-mini",
-    input="Return a tool call for weather in Paris.",
-    tools=[{
-        "type": "function",
-        "name": "weather_lookup",
-        "strict": True,
-        "parameters": {
-            "type": "object",
-            "properties": {"city": {"type": "string"}},
-            "required": ["city"],
-            "additionalProperties": False,
-        },
-    }],
+    input="Return the single word Paris.",
     include=["message.output_text.logprobs"],
     top_logprobs=5,
     temperature=0.0,
@@ -45,11 +34,13 @@ record = adapter.capture(response, {
     "model": "gpt-4.1-mini",
     "temperature": 0.0,
     "top_p": 1.0,
-    "include_output_text_logprobs": True,
+    "include": ["message.output_text.logprobs"],
     "top_logprobs": 5,
-    "deterministic": True,
 })
-result = analyzer.analyze_step(record, adapter.capability_report(response, {"include_output_text_logprobs": True, "top_logprobs": 5}))
+result = analyzer.analyze_step(
+    record,
+    adapter.capability_report(response, {"include": ["message.output_text.logprobs"], "top_logprobs": 5, "temperature": 0.0, "top_p": 1.0}),
+)
 print(result.action)
 ```
 
@@ -64,11 +55,12 @@ For canonical mode, keep the request strictly greedy: `temperature=0`, `top_p=1`
 ```text
 mode=canonical
 primary_score_type=g_nll
-segment=tool_argument_leaf jsonpath=$.city action=regenerate_segment
+segment=final_answer_text action=continue
 ```
 
 ## Troubleshooting
 
 - Chat Completions: pass `logprobs=True` and `top_logprobs=k`.
-- Responses: include `message.output_text.logprobs`; verify output content actually contains token details.
+- Responses: include `message.output_text.logprobs`; do not assume function-call items carry token logprobs.
+- OpenAI-family tool calls are captured structurally, but tool-name/tool-argument segments require explicit token grounding rather than incidental mentions in assistant prose.
 - This example can be adapted into a local live smoke test, but AgentUQ does not run provider-backed tests in required OSS CI.

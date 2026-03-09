@@ -2,14 +2,19 @@ import asyncio
 from dataclasses import dataclass, field
 
 from uq_runtime.adapters.fireworks import FireworksAdapter
+from uq_runtime.adapters.gemini import GeminiAdapter
 from uq_runtime.adapters.litellm import LiteLLMAdapter, probe_litellm_capability
-from uq_runtime.adapters.openai_agents import OpenAIAgentsAdapter, model_settings_with_logprobs
+from uq_runtime.adapters.openai_agents import OpenAIAgentsAdapter, latest_raw_response, model_settings_with_logprobs
 from uq_runtime.adapters.openrouter import OpenRouterAdapter, probe_openrouter_model
+from uq_runtime.adapters.together import TogetherAdapter
+from uq_runtime.analysis.analyzer import Analyzer
 from uq_runtime.integrations.langchain_middleware import UQMiddleware, analyze_after_model_call, guard_before_tool_execution
 from uq_runtime.integrations.langgraph_hook import enrich_graph_state, should_interrupt_before_tool
 from uq_runtime.integrations.openai_wrappers import UQWrappedOpenAI
 from uq_runtime.request_params import request_params
 from uq_runtime.schemas.config import UQConfig
+from uq_runtime.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
+from uq_runtime.schemas.results import Action
 
 
 def _chat_response() -> dict:
@@ -19,17 +24,15 @@ def _chat_response() -> dict:
         "choices": [
             {
                 "message": {
-                    "content": "",
+                    "content": "Checking.",
                     "tool_calls": [
                         {"id": "call_1", "function": {"name": "weather_lookup", "arguments": '{"city":"Paris"}'}}
                     ],
                 },
                 "logprobs": {
                     "content": [
-                        {"token": "weather_lookup", "logprob": -0.2, "top_logprobs": [{"token": "weather_lookup", "logprob": -0.2}, {"token": "search", "logprob": -0.9}]},
-                        {"token": '{"city"', "logprob": -0.2, "top_logprobs": [{"token": '{"city"', "logprob": -0.2}, {"token": '{"location"', "logprob": -1.0}]},
-                        {"token": ":", "logprob": -0.1, "top_logprobs": [{"token": ":", "logprob": -0.1}, {"token": ",", "logprob": -1.5}]},
-                        {"token": '"Paris"', "logprob": -0.3, "top_logprobs": [{"token": '"Paris"', "logprob": -0.3}, {"token": '"London"', "logprob": -0.6}]},
+                        {"token": "Checking", "logprob": -0.2, "top_logprobs": [{"token": "Checking", "logprob": -0.2}, {"token": "Looking", "logprob": -0.9}]},
+                        {"token": ".", "logprob": -0.1, "top_logprobs": [{"token": ".", "logprob": -0.1}, {"token": "!", "logprob": -1.5}]},
                     ]
                 },
             }
@@ -48,12 +51,10 @@ def _responses_payload() -> dict:
                 "content": [
                     {
                         "type": "output_text",
-                        "text": "",
+                        "text": "Checking.",
                         "logprobs": [
-                            {"token": "weather_lookup", "logprob": -0.2, "top_logprobs": [{"token": "weather_lookup", "logprob": -0.2}, {"token": "search", "logprob": -0.9}]},
-                            {"token": '{"city"', "logprob": -0.2, "top_logprobs": [{"token": '{"city"', "logprob": -0.2}, {"token": '{"location"', "logprob": -1.0}]},
-                            {"token": ":", "logprob": -0.1, "top_logprobs": [{"token": ":", "logprob": -0.1}, {"token": ",", "logprob": -1.5}]},
-                            {"token": '"Paris"', "logprob": -0.3, "top_logprobs": [{"token": '"Paris"', "logprob": -0.3}, {"token": '"London"', "logprob": -0.6}]},
+                            {"token": "Checking", "logprob": -0.2, "top_logprobs": [{"token": "Checking", "logprob": -0.2}, {"token": "Looking", "logprob": -0.9}]},
+                            {"token": ".", "logprob": -0.1, "top_logprobs": [{"token": ".", "logprob": -0.1}, {"token": "!", "logprob": -1.5}]},
                         ],
                     }
                 ],
@@ -64,9 +65,15 @@ def _responses_payload() -> dict:
 
 def test_request_params_cover_supported_providers():
     openai = request_params("openai", mode="canonical", topk=7)
-    assert openai["include_output_text_logprobs"] is True
+    assert openai["include"] == ["message.output_text.logprobs"]
     assert openai["top_logprobs"] == 7
     assert openai["temperature"] == 0.0
+    assert "logprobs" not in openai
+
+    openai_chat = request_params("openai", mode="canonical", topk=7, transport="chat")
+    assert openai_chat["logprobs"] is True
+    assert openai_chat["top_logprobs"] == 7
+    assert "include" not in openai_chat
 
     openrouter = request_params("openrouter", mode="realized", topk=3)
     assert openrouter["provider"]["require_parameters"] is True
@@ -74,7 +81,7 @@ def test_request_params_cover_supported_providers():
 
     litellm = request_params("litellm", mode="canonical", topk=2)
     assert litellm["drop_params"] is False
-    assert litellm["deterministic"] is True
+    assert litellm["temperature"] == 0.0
 
     gemini = request_params("gemini", topk=4)
     assert gemini["responseLogprobs"] is True
@@ -86,12 +93,26 @@ def test_request_params_cover_supported_providers():
 
     together = request_params("together", topk=6)
     assert together["logprobs"] == 6
-    assert together["top_logprobs"] is None
+    assert "top_logprobs" not in together
+
+    assert GeminiAdapter().capability_report({"candidates": []}, gemini).request_attempted_topk == 4
+    assert FireworksAdapter().capability_report({"choices": []}, fireworks).request_attempted_topk == 5
+    assert OpenRouterAdapter().capability_report({"choices": []}, openrouter).request_attempted_topk == 3
+    assert LiteLLMAdapter().capability_report({"choices": []}, litellm).request_attempted_topk == 2
+    assert TogetherAdapter().capability_report({"choices": []}, together).request_attempted_topk == 6
+    assert OpenAIAgentsAdapter().capability_report({"output": []}, {"response_include": ["message.output_text.logprobs"], "top_logprobs": 7}).request_attempted_logprobs is True
 
 
 def test_request_params_unknown_provider_raises():
     try:
         request_params("unknown-provider")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Expected ValueError")
+
+    try:
+        request_params("openai", transport="invalid")
     except ValueError:
         pass
     else:
@@ -113,49 +134,108 @@ def test_probe_helpers_and_declared_support():
     assert openrouter_cap.provider_declared_support is True
 
 
-def test_openai_agents_helpers_and_fireworks_adapter():
+def test_openai_agents_helpers():
     settings = model_settings_with_logprobs(top_logprobs=4)
     assert settings["top_logprobs"] == 4
-    assert settings["include"] == ["message.output_text.logprobs"]
+    assert settings["response_include"] == ["message.output_text.logprobs"]
 
-    agent_record = OpenAIAgentsAdapter().capture(_responses_payload(), {"include_output_text_logprobs": True, "top_logprobs": 2})
+    agent_record = OpenAIAgentsAdapter().capture(_responses_payload(), {"response_include": ["message.output_text.logprobs"], "top_logprobs": 2})
     assert agent_record.provider == "openai"
     assert agent_record.structured_blocks[0].type == "function_call"
 
-    fireworks_record = FireworksAdapter().capture(_chat_response(), {"logprobs": True, "top_logprobs": 2})
+    run_result = type("RunResult", (), {"raw_responses": [{"id": "resp_latest"}]})()
+    assert latest_raw_response(run_result)["id"] == "resp_latest"
+
+    try:
+        latest_raw_response(object())
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Expected ValueError when raw_responses are unavailable")
+
+
+def test_fireworks_adapter_prefers_openai_compatible_logprobs_content():
+    fireworks_record = FireworksAdapter().capture(
+        {
+            "id": "fw_1",
+            "model": "accounts/fireworks/models/test",
+            "choices": [
+                {
+                    "message": {"content": "SELECT email"},
+                    "logprobs": {
+                        "content": [
+                            {"token": "SELECT", "logprob": -0.2, "top_logprobs": [{"token": "SELECT", "logprob": -0.2}, {"token": "UPDATE", "logprob": -1.0}]},
+                            {"token": " email", "logprob": -0.1, "top_logprobs": [{"token": " email", "logprob": -0.1}, {"token": " id", "logprob": -0.4}]},
+                        ]
+                    },
+                }
+            ],
+        },
+        {"logprobs": True, "top_logprobs": 2},
+    )
     assert fireworks_record.provider == "fireworks"
+    assert fireworks_record.selected_tokens == ["SELECT", " email"]
+    assert fireworks_record.metadata["fireworks_logprobs_source"] == "openai_compatible_content"
+
+
+def test_fireworks_adapter_supports_legacy_logprob_arrays():
+    fireworks_record = FireworksAdapter().capture(
+        {
+            "id": "fw_1",
+            "model": "accounts/fireworks/models/test",
+            "choices": [
+                {
+                    "message": {"content": "SELECT email"},
+                    "logprobs": {
+                        "tokens": ["SELECT", " email"],
+                        "token_logprobs": [-0.2, -0.1],
+                        "top_logprobs": [
+                            [{"token": "SELECT", "logprob": -0.2}, {"token": "UPDATE", "logprob": -1.0}],
+                            [{"token": " email", "logprob": -0.1}, {"token": " id", "logprob": -0.4}],
+                        ],
+                    },
+                }
+            ],
+        },
+        {"logprobs": True, "top_logprobs": 2},
+    )
+    assert fireworks_record.provider == "fireworks"
+    assert fireworks_record.selected_tokens == ["SELECT", " email"]
+    assert fireworks_record.metadata["fireworks_logprobs_source"] == "legacy_token_arrays"
 
 
 @dataclass
 class DummyResponse:
-    content: str = ""
+    content: str = "Checking."
     response_metadata: dict = field(
         default_factory=lambda: {
             "model_name": "gpt-4o-mini",
             "logprobs": _chat_response()["choices"][0]["logprobs"],
         }
     )
-    additional_kwargs: dict = field(
-        default_factory=lambda: {"tool_calls": _chat_response()["choices"][0]["message"]["tool_calls"]}
+    additional_kwargs: dict = field(default_factory=dict)
+    tool_calls: list = field(
+        default_factory=lambda: [{"id": "call_1", "name": "weather_lookup", "args": {"city": "Paris"}, "type": "tool_call"}]
     )
 
 
 @dataclass
 class RiskyToolResponse:
-    content: str = ""
+    content: str = "Checking."
     response_metadata: dict = field(
         default_factory=lambda: {
             "model_name": "gpt-4o-mini",
             "logprobs": {
                 "content": [
-                    {"token": "weather_lookup", "logprob": -2.2, "top_logprobs": [{"token": "weather_lookup", "logprob": -2.2}, {"token": "search_web", "logprob": -2.3}]},
-                    {"token": '{"city"', "logprob": -0.2, "top_logprobs": [{"token": '{"city"', "logprob": -0.2}, {"token": '{"location"', "logprob": -0.9}]},
+                    {"token": "Checking", "logprob": -2.2, "top_logprobs": [{"token": "Checking", "logprob": -2.2}, {"token": "Looking", "logprob": -2.3}]},
+                    {"token": ".", "logprob": -0.1, "top_logprobs": [{"token": ".", "logprob": -0.1}, {"token": "!", "logprob": -1.0}]},
                 ]
             },
         }
     )
-    additional_kwargs: dict = field(
-        default_factory=lambda: {"tool_calls": [{"id": "call_1", "function": {"name": "weather_lookup", "arguments": '{"city":"Paris"}'}}]}
+    additional_kwargs: dict = field(default_factory=dict)
+    tool_calls: list = field(
+        default_factory=lambda: [{"id": "call_1", "name": "weather_lookup", "args": {"city": "Paris"}, "type": "tool_call"}]
     )
 
 
@@ -172,13 +252,85 @@ class DummyModel:
         return DummyResponse()
 
 
-def test_langchain_analysis_and_guard_helpers():
+@dataclass
+class BoundDummyModel:
+    invoked_with: tuple = ()
+    kwargs: dict = field(default_factory=lambda: {"logprobs": True, "top_logprobs": 2})
+    bound: object = field(
+        default_factory=lambda: type(
+            "BoundOpenAIModel",
+            (),
+            {"model_name": "gpt-4o-mini", "temperature": 0.0, "top_p": 1.0},
+        )()
+    )
+
+    def invoke(self, *args, **kwargs):
+        self.invoked_with = (args, kwargs)
+        return DummyResponse()
+
+    async def ainvoke(self, *args, **kwargs):
+        self.invoked_with = (args, kwargs)
+        return DummyResponse()
+
+
+def _grounded_tool_result() -> tuple:
+    raw_text = 'weather_lookup{"city":"Paris"}'
+    record = GenerationRecord(
+        provider="synthetic",
+        transport="unit_test",
+        model="gpt-test",
+        temperature=0.6,
+        top_p=1.0,
+        raw_text=raw_text,
+        selected_tokens=["weather_lookup", '{"city"', ":", '"Paris"', "}"],
+        selected_logprobs=[-2.2, -0.2, -0.1, -0.3, -0.1],
+        top_logprobs=[
+            [TopToken(token="weather_lookup", logprob=-2.2), TopToken(token="search_web", logprob=-2.3)],
+            [TopToken(token='{"city"', logprob=-0.2), TopToken(token='{"location"', logprob=-1.0)],
+            [TopToken(token=":", logprob=-0.1), TopToken(token=",", logprob=-1.2)],
+            [TopToken(token='"Paris"', logprob=-0.3), TopToken(token='"London"', logprob=-0.7)],
+            [TopToken(token="}", logprob=-0.1), TopToken(token="]", logprob=-1.0)],
+        ],
+        structured_blocks=[
+            StructuredBlock(
+                type="function_call",
+                name="weather_lookup",
+                arguments='{"city":"Paris"}',
+                text=raw_text,
+                char_start=0,
+                char_end=len(raw_text),
+                metadata={"token_grounded": True},
+            )
+        ],
+        metadata={"request_logprobs": True, "request_topk": 2},
+    )
+    capability = CapabilityReport(
+        selected_token_logprobs=True,
+        topk_logprobs=True,
+        topk_k=2,
+        structured_blocks=True,
+        function_call_structure=True,
+        request_attempted_logprobs=True,
+        request_attempted_topk=2,
+    )
+    result = Analyzer(UQConfig(mode="realized")).analyze_step(record, capability)
+    tool_name_segment = next(segment for segment in result.segments if segment.kind == "tool_name")
+    return result, tool_name_segment
+
+
+def test_langchain_analysis_attaches_uq_result_without_tool_grounding():
     response = DummyResponse()
     request_meta = {"logprobs": True, "top_logprobs": 2, "deterministic": True}
     result = analyze_after_model_call(response, UQConfig(), request_meta)
     assert "uq_result" in response.response_metadata
     assert result.decision is not None
-    assert guard_before_tool_execution("weather_lookup", result) == result.decision.segment_actions[next(seg.id for seg in result.segments if seg.kind == "tool_name")]
+    assert all(segment.kind != "tool_name" for segment in result.segments)
+    assert guard_before_tool_execution("weather_lookup", result) == Action.CONTINUE
+
+
+def test_guard_before_tool_execution_uses_explicit_grounded_tool_segments():
+    result, tool_name_segment = _grounded_tool_result()
+    assert guard_before_tool_execution("weather_lookup", result) == result.decision.segment_actions[tool_name_segment.id]
 
 
 def test_uqmiddleware_sync_and_async():
@@ -193,10 +345,31 @@ def test_uqmiddleware_sync_and_async():
     assert "uq_result" in async_response.response_metadata
 
 
-def test_langgraph_state_helpers_interrupt_for_blocking_actions():
+def test_uqmiddleware_infers_request_meta_from_bound_model():
+    model = BoundDummyModel()
+    middleware = UQMiddleware(model, UQConfig())
+    response = middleware.invoke("prompt")
+    assert response.response_metadata["uq_result"]["mode"] == "canonical"
+
+
+def test_analyze_after_model_call_infers_logprob_request_from_response_metadata():
+    response = DummyResponse()
+    result = analyze_after_model_call(response, UQConfig())
+    assert result.capability_level.value == "full"
+    assert result.mode == "realized"
+
+
+def test_langgraph_state_helpers_do_not_interrupt_for_ungrounded_tool_calls():
     response = RiskyToolResponse()
     state = enrich_graph_state({}, response, UQConfig(), {"logprobs": True, "top_logprobs": 2, "deterministic": True})
     assert "uq_result" in state
+    assert should_interrupt_before_tool("weather_lookup", state) is False
+    assert should_interrupt_before_tool("other_tool", state) is False
+
+
+def test_langgraph_state_helpers_interrupt_for_grounded_tool_segments():
+    result, _tool_name_segment = _grounded_tool_result()
+    state = {"uq_result": result.model_dump(mode="json")}
     assert should_interrupt_before_tool("weather_lookup", state) is True
     assert should_interrupt_before_tool("other_tool", state) is False
 
@@ -225,4 +398,3 @@ def test_openai_wrapper_returns_response_result_and_decision():
     assert chat_call.result.decision is not None
     assert response_call.decision.action == response_call.result.action
     assert chat_call.decision.action == chat_call.result.action
-

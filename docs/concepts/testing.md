@@ -12,6 +12,8 @@ Offline, deterministic tests for:
 - adapter normalization helpers
 - wrapper and integration plumbing with synthetic payloads
 
+When unit tests cover tool gating or tool-argument policy, they should use explicitly grounded synthetic spans rather than assuming provider prose implies tool-call token coverage.
+
 This is the required default suite for contributors and maintainers.
 
 Run it with:
@@ -36,6 +38,8 @@ Fixtures are checked into the repo only after removing sensitive data. Preserve 
 - structured blocks and segmentation boundaries
 - capability detection
 - wrapper/framework metadata surfaces
+
+Contract fixtures should model only documented provider/framework surfaces. For OpenAI-compatible tool calling, this means structural `tool_calls` plus text logprobs where available, not synthetic tool-call-token logprobs.
 
 ## `tests/live`
 
@@ -109,4 +113,3 @@ Live tests can fail for reasons unrelated to AgentUQ:
 - key misconfiguration
 
 Treat them as smoke checks, not correctness proofs.
-

@@ -14,11 +14,14 @@ class TogetherAdapter:
 
     def capture(self, response: Any, request_meta: dict | None = None) -> GenerationRecord:
         data = as_dict(response)
+        choice = (data.get("choices") or [{}])[0]
+        message = choice.get("message") or {}
+        logprobs_payload = choice.get("logprobs") or {}
         output = data.get("output") or {}
-        text = output.get("text") or ""
-        tokens = output.get("tokens") or []
-        token_logprobs = output.get("token_logprobs") or []
-        raw_top = output.get("top_logprobs") or []
+        text = message.get("content") or output.get("text") or ""
+        tokens = logprobs_payload.get("tokens") or output.get("tokens") or []
+        token_logprobs = logprobs_payload.get("token_logprobs") or output.get("token_logprobs") or []
+        raw_top = logprobs_payload.get("top_logprobs") or output.get("top_logprobs") or []
         top_logprobs = []
         for item in raw_top:
             if isinstance(item, dict):
@@ -27,6 +30,8 @@ class TogetherAdapter:
                         [{"token": token, "logprob": logprob} for token, logprob in item.items()]
                     )
                 )
+            elif isinstance(item, list):
+                top_logprobs.append(normalize_top_logprobs(item))
             else:
                 top_logprobs.append([])
         return GenerationRecord(
@@ -51,4 +56,3 @@ class TogetherAdapter:
 
     def capability_report(self, response: Any, request_meta: dict | None = None) -> CapabilityReport:
         return infer_capability(self.capture(response, request_meta), request_meta, declared_support=True)
-

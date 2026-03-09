@@ -30,11 +30,16 @@ class Analyzer:
 
     def _mode(self, record: GenerationRecord, capability: CapabilityReport) -> tuple[str, str, list[Event]]:
         requested = self.config.mode
-        deterministic = self.config.deterministic
-        if deterministic is None:
-            deterministic = bool(record.metadata.get("deterministic")) if record.metadata.get("deterministic") is not None else None
         temp = record.temperature
         top_p = record.top_p
+        deterministic = self.config.deterministic
+        if deterministic is None:
+            if record.metadata.get("deterministic") is not None:
+                deterministic = bool(record.metadata.get("deterministic"))
+            elif temp is not None and top_p is not None:
+                deterministic = math.isclose(temp, self.config.canonical_temperature_max, abs_tol=1e-9) and math.isclose(
+                    top_p, self.config.canonical_top_p_min, abs_tol=1e-9
+                )
         canonical_ready = (
             deterministic is True
             and temp is not None

@@ -3,19 +3,25 @@
 from __future__ import annotations
 
 
-def request_params(provider: str, mode: str = "auto", topk: int = 5) -> dict:
+def request_params(provider: str, mode: str = "auto", topk: int = 5, transport: str | None = None) -> dict:
     provider = provider.lower()
     deterministic = mode == "canonical"
     if provider == "openai":
-        params = {
-            "top_logprobs": topk,
-            "temperature": 0.0 if deterministic else 0.7,
-            "top_p": 1.0,
-            "deterministic": deterministic,
-        }
-        params["include_output_text_logprobs"] = True
-        params["logprobs"] = True
-        return params
+        if transport in {None, "responses"}:
+            return {
+                "include": ["message.output_text.logprobs"],
+                "top_logprobs": topk,
+                "temperature": 0.0 if deterministic else 0.7,
+                "top_p": 1.0,
+            }
+        if transport == "chat":
+            return {
+                "logprobs": True,
+                "top_logprobs": topk,
+                "temperature": 0.0 if deterministic else 0.7,
+                "top_p": 1.0,
+            }
+        raise ValueError(f"Unsupported OpenAI transport for request helper: {transport}")
     if provider == "openrouter":
         return {
             "logprobs": True,
@@ -23,7 +29,6 @@ def request_params(provider: str, mode: str = "auto", topk: int = 5) -> dict:
             "provider": {"require_parameters": True},
             "temperature": 0.0 if deterministic else 0.7,
             "top_p": 1.0,
-            "deterministic": deterministic,
         }
     if provider == "litellm":
         return {
@@ -32,7 +37,6 @@ def request_params(provider: str, mode: str = "auto", topk: int = 5) -> dict:
             "drop_params": False,
             "temperature": 0.0 if deterministic else 0.7,
             "top_p": 1.0,
-            "deterministic": deterministic,
         }
     if provider == "gemini":
         return {
@@ -40,15 +44,18 @@ def request_params(provider: str, mode: str = "auto", topk: int = 5) -> dict:
             "logprobs": topk,
             "temperature": 0.0 if deterministic else 0.7,
             "topP": 1.0,
-            "deterministic": deterministic,
         }
-    if provider in {"fireworks", "together"}:
+    if provider == "fireworks":
         return {
-            "logprobs": True if provider == "fireworks" else topk,
-            "top_logprobs": topk if provider == "fireworks" else None,
+            "logprobs": True,
+            "top_logprobs": topk,
             "temperature": 0.0 if deterministic else 0.7,
             "top_p": 1.0,
-            "deterministic": deterministic,
+        }
+    if provider == "together":
+        return {
+            "logprobs": topk,
+            "temperature": 0.0 if deterministic else 0.7,
+            "top_p": 1.0,
         }
     raise ValueError(f"Unsupported provider for request helper: {provider}")
-

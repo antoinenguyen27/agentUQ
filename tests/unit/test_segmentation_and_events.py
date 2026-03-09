@@ -27,14 +27,25 @@ def test_json_and_browser_segmentation():
 
 
 def test_schema_invalid_blocks_execution():
+    raw_text = 'tool{"city":}'
     record = GenerationRecord(
         provider="openai",
         transport="direct_api",
         model="gpt-test",
-        raw_text='tool{"city":}',
+        raw_text=raw_text,
         selected_tokens=["tool", '{"city"', ":", "}"],
         selected_logprobs=[-0.1, -0.2, -0.3, -0.2],
-        structured_blocks=[StructuredBlock(type="function_call", name="tool", arguments='{"city":}', text='tool{"city":}')],
+        structured_blocks=[
+            StructuredBlock(
+                type="function_call",
+                name="tool",
+                arguments='{"city":}',
+                text=raw_text,
+                char_start=0,
+                char_end=len(raw_text),
+                metadata={"token_grounded": True},
+            )
+        ],
         metadata={"request_logprobs": True, "deterministic": True},
     )
     capability = CapabilityReport(selected_token_logprobs=True, topk_logprobs=False, structured_blocks=True, function_call_structure=True, request_attempted_logprobs=True)
@@ -62,4 +73,3 @@ def test_off_topk_token_event_in_realized_mode():
     capability = CapabilityReport(selected_token_logprobs=True, topk_logprobs=True, topk_k=2, request_attempted_logprobs=True, request_attempted_topk=2)
     result = Analyzer(UQConfig(mode="realized")).analyze_step(record, capability)
     assert any(event.type == "OFF_TOPK_TOKEN" for event in result.events)
-

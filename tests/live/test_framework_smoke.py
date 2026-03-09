@@ -27,7 +27,8 @@ def test_live_langchain_wrapper_smoke():
         top_p=1.0,
     ).bind(logprobs=True, top_logprobs=2)
     wrapped = UQMiddleware(model, UQConfig())
-    response = wrapped.invoke("Return a weather_lookup tool call for Paris.")
+    response = wrapped.invoke("Return the single word Paris.")
+    assert response.response_metadata.get("logprobs")
     assert "uq_result" in response.response_metadata
 
 
@@ -44,10 +45,11 @@ def test_live_langgraph_hook_smoke():
         temperature=0.0,
         top_p=1.0,
     ).bind(logprobs=True, top_logprobs=2)
-    response = model.invoke("Return a weather_lookup tool call for Paris.")
+    response = model.invoke("Return the single word Paris.")
+    assert response.response_metadata.get("logprobs")
     result = analyze_after_model_call(response, UQConfig(), {"logprobs": True, "top_logprobs": 2, "temperature": 0.0, "top_p": 1.0, "deterministic": True})
     state = enrich_graph_state({}, response, UQConfig(), {"logprobs": True, "top_logprobs": 2, "temperature": 0.0, "top_p": 1.0, "deterministic": True})
+    assert result.capability_level.value != "none"
     assert result.decision is not None
     assert "uq_result" in state
-    assert should_interrupt_before_tool("weather_lookup", state) in {True, False}
-
+    assert should_interrupt_before_tool("weather_lookup", state) is False

@@ -32,7 +32,7 @@ class _ResponsesProxy:
             "temperature": kwargs.get("temperature"),
             "top_p": kwargs.get("top_p"),
             "max_output_tokens": kwargs.get("max_output_tokens"),
-            "include_output_text_logprobs": "message.output_text.logprobs" in (kwargs.get("include") or []),
+            "include": kwargs.get("include"),
             "top_logprobs": kwargs.get("top_logprobs"),
             "deterministic": kwargs.get("temperature") == 0.0 and kwargs.get("top_p") == 1.0,
         }

@@ -4,8 +4,8 @@ Whole-response scoring is too blunt for agent systems. AgentUQ segments generati
 
 ## Built-in segmentation
 
-- Tool and function names
-- Tool arguments
+- Tool and function names when the adapter has explicit character grounding for them
+- Tool arguments when the adapter has explicit character grounding for them
 - JSON leaves by JSONPath
 - ReAct blocks such as `Action:` and `Action Input:`
 - Browser DSL commands and arguments
@@ -21,3 +21,5 @@ Whole-response scoring is too blunt for agent systems. AgentUQ segments generati
 - `low_priority`: reasoning text
 
 Higher-priority segments use stricter tolerance thresholds and stricter default actions.
+
+For OpenAI-compatible chat/responses surfaces, tool calls are often returned as structured metadata without token-level grounding. AgentUQ records those tool calls, but it does not synthesize `tool_name` or `tool_argument_leaf` segments by substring-matching assistant prose.

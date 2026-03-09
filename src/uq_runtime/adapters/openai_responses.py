@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from uq_runtime.adapters.base import as_dict, block, infer_capability, normalize_top_logprobs
+from uq_runtime.adapters.base import as_dict, block, infer_capability, normalize_top_logprobs, requested_logprobs, requested_topk
 from uq_runtime.schemas.records import CapabilityReport, GenerationRecord
 
 
@@ -19,7 +19,7 @@ class OpenAIResponsesAdapter:
         logprobs: list[float] = []
         top_logprobs: list[list] = []
         blocks = []
-        text_parts: list[str] = []
+        raw_text_parts: list[str] = []
         char_cursor = 0
 
         for item in output_items:
@@ -28,8 +28,11 @@ class OpenAIResponsesAdapter:
                 for content in item.get("content") or []:
                     if content.get("type") in {"output_text", "text"}:
                         text = content.get("text", "")
+                        if raw_text_parts and text:
+                            raw_text_parts.append("\n")
+                            char_cursor += 1
                         blocks.append(block("output_text", text=text, char_start=char_cursor, char_end=char_cursor + len(text), metadata={"role": "final"}))
-                        text_parts.append(text)
+                        raw_text_parts.append(text)
                         for token_info in content.get("logprobs") or []:
                             tokens.append(token_info.get("token", ""))
                             if token_info.get("logprob") is not None:
@@ -40,15 +43,20 @@ class OpenAIResponsesAdapter:
                 name = item.get("name")
                 arguments = item.get("arguments") or item.get("input")
                 combined = f"{name or ''}{arguments or ''}"
-                start = char_cursor
-                char_cursor += len(combined)
-                blocks.append(block("function_call", text=combined, name=name, arguments=arguments, char_start=start, char_end=char_cursor, metadata={"call_id": item.get("call_id")}))
-                text_parts.append(combined)
-        raw_text = "\n".join(part for part in text_parts if part)
+                blocks.append(
+                    block(
+                        "function_call",
+                        text=combined,
+                        name=name,
+                        arguments=arguments,
+                        metadata={"call_id": item.get("call_id"), "token_grounded": False},
+                    )
+                )
+        raw_text = "".join(raw_text_parts)
         return GenerationRecord(
             provider=self.provider,
             transport=self.transport,
-            model=data.get("model", request_meta.get("model") if request_meta else "unknown"),
+            model=data.get("model") or (request_meta or {}).get("model") or "unknown",
             request_id=data.get("id"),
             temperature=(request_meta or {}).get("temperature"),
             top_p=(request_meta or {}).get("top_p"),
@@ -61,8 +69,8 @@ class OpenAIResponsesAdapter:
             top_logprobs=top_logprobs or None,
             structured_blocks=blocks,
             metadata={
-                "request_logprobs": bool((request_meta or {}).get("include_output_text_logprobs")),
-                "request_topk": (request_meta or {}).get("top_logprobs"),
+                "request_logprobs": requested_logprobs(request_meta),
+                "request_topk": requested_topk(request_meta),
                 "deterministic": (request_meta or {}).get("deterministic"),
             },
         )
@@ -70,4 +78,3 @@ class OpenAIResponsesAdapter:
     def capability_report(self, response: Any, request_meta: dict | None = None) -> CapabilityReport:
         record = self.capture(response, request_meta)
         return infer_capability(record, request_meta, declared_support=True)
-

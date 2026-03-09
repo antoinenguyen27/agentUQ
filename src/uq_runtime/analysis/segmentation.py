@@ -94,6 +94,32 @@ def _find_occurrence(haystack: str, needle: str, start: int = 0) -> tuple[int, i
     return index, index + len(needle)
 
 
+def _coerce_span(value: object) -> tuple[int, int] | None:
+    if isinstance(value, (list, tuple)) and len(value) == 2 and all(isinstance(part, int) for part in value):
+        return int(value[0]), int(value[1])
+    return None
+
+
+def _tool_block_spans(block: StructuredBlock) -> tuple[tuple[int, int] | None, tuple[int, int] | None]:
+    metadata = block.metadata or {}
+    name_span = _coerce_span(metadata.get("name_char_span"))
+    arguments_span = _coerce_span(metadata.get("arguments_char_span"))
+    if name_span or arguments_span:
+        return name_span, arguments_span
+    if not metadata.get("token_grounded") or block.char_start is None or not block.text:
+        return None, None
+    block_offset = block.char_start
+    if name_span is None and block.name:
+        name_match = _find_occurrence(block.text, block.name)
+        if name_match is not None:
+            name_span = (block_offset + name_match[0], block_offset + name_match[1])
+    if arguments_span is None and block.arguments:
+        arguments_match = _find_occurrence(block.text, block.arguments)
+        if arguments_match is not None:
+            arguments_span = (block_offset + arguments_match[0], block_offset + arguments_match[1])
+    return name_span, arguments_span
+
+
 def _segment_json(block: StructuredBlock, raw_text: str, token_char_spans: list[tuple[int, int]], counter: int, segments: list[SegmentSpec]) -> int:
     if block.text is None:
         return counter
@@ -109,20 +135,18 @@ def _segment_json(block: StructuredBlock, raw_text: str, token_char_spans: list[
 
 
 def _segment_tool_arguments(block: StructuredBlock, raw_text: str, token_char_spans: list[tuple[int, int]], counter: int, segments: list[SegmentSpec]) -> int:
-    if block.name:
-        start = block.char_start or raw_text.find(block.name)
-        if start >= 0:
-            counter = _append_segment(segments, counter, "tool_name", block.name, (start, start + len(block.name)), token_char_spans, {"tool_name": block.name})
-    if block.arguments:
-        arg_start = raw_text.find(block.arguments)
-        if arg_start >= 0:
-            counter = _append_segment(segments, counter, "tool_arguments_raw", block.arguments, (arg_start, arg_start + len(block.arguments)), token_char_spans)
-        search_cursor = arg_start if arg_start >= 0 else 0
+    name_span, arguments_span = _tool_block_spans(block)
+    if block.name and name_span is not None:
+        counter = _append_segment(segments, counter, "tool_name", block.name, name_span, token_char_spans, {"tool_name": block.name})
+    if block.arguments and arguments_span is not None:
+        counter = _append_segment(segments, counter, "tool_arguments_raw", block.arguments, arguments_span, token_char_spans)
+        search_cursor = 0
         for jsonpath, value in parse_json_leaves(block.arguments):
-            span = _find_occurrence(raw_text, value, search_cursor)
-            if span is None:
+            relative_span = _find_occurrence(block.arguments, value, search_cursor)
+            if relative_span is None:
                 continue
-            search_cursor = span[1]
+            search_cursor = relative_span[1]
+            span = (arguments_span[0] + relative_span[0], arguments_span[0] + relative_span[1])
             counter = _append_segment(segments, counter, "tool_argument_leaf", value, span, token_char_spans, {"jsonpath": jsonpath, "tool_name": block.name})
     return counter
 
@@ -185,4 +209,3 @@ def segment_record(record: GenerationRecord, config: SegmentationConfig) -> list
         elif raw_text.strip():
             counter = _append_segment(segments, counter, "unknown_text", raw_text, (0, len(raw_text)), token_char_spans)
     return segments
-

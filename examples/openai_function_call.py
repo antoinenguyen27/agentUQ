@@ -8,25 +8,23 @@ def main() -> None:
         "id": "resp_123",
         "model": "gpt-4.1-mini",
         "output": [
-            {"type": "function_call", "name": "weather_lookup", "arguments": '{"city":"Pariss"}'},
+            {"type": "function_call", "name": "weather_lookup", "arguments": '{"city":}'},
             {
                 "type": "message",
                 "content": [
                     {
                         "type": "output_text",
-                        "text": "",
+                        "text": "Checking.",
                         "logprobs": [
-                            {"token": "weather_lookup", "logprob": -0.2, "top_logprobs": [{"token": "weather_lookup", "logprob": -0.2}, {"token": "search_web", "logprob": -1.1}]},
-                            {"token": '{"city"', "logprob": -0.3, "top_logprobs": [{"token": '{"city"', "logprob": -0.3}, {"token": '{"location"', "logprob": -0.9}]},
-                            {"token": ":", "logprob": -0.1, "top_logprobs": [{"token": ":", "logprob": -0.1}, {"token": ",", "logprob": -2.0}]},
-                            {"token": '"Pariss"', "logprob": -4.4, "top_logprobs": [{"token": '"Paris"', "logprob": -3.8}, {"token": '"Pariss"', "logprob": -4.4}]},
+                            {"token": "Checking", "logprob": -0.2, "top_logprobs": [{"token": "Checking", "logprob": -0.2}, {"token": "Looking", "logprob": -1.1}]},
+                            {"token": ".", "logprob": -0.1, "top_logprobs": [{"token": ".", "logprob": -0.1}, {"token": "!", "logprob": -1.5}]},
                         ],
                     }
                 ],
             },
         ],
     }
-    request_meta = {"include_output_text_logprobs": True, "top_logprobs": 2, "temperature": 0.0, "top_p": 1.0, "deterministic": True}
+    request_meta = {"include": ["message.output_text.logprobs"], "top_logprobs": 2, "temperature": 0.0, "top_p": 1.0}
     adapter = OpenAIResponsesAdapter()
     analyzer = Analyzer(UQConfig(mode="canonical", policy="balanced", tolerance="strict"))
     record = adapter.capture(response, request_meta)

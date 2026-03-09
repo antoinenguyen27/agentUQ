@@ -11,22 +11,24 @@ def test_openai_chat_adapter_normalizes_tool_calls():
         "choices": [
             {
                 "message": {
-                    "content": "",
+                    "content": "Checking.",
                     "tool_calls": [
                         {"id": "call_1", "function": {"name": "weather", "arguments": '{"city":"Paris"}'}}
                     ],
                 },
                 "logprobs": {
                     "content": [
-                        {"token": "weather", "logprob": -0.1, "top_logprobs": [{"token": "weather", "logprob": -0.1}, {"token": "search", "logprob": -0.9}]}
+                        {"token": "Checking", "logprob": -0.1, "top_logprobs": [{"token": "Checking", "logprob": -0.1}, {"token": "Looking", "logprob": -0.9}]},
+                        {"token": ".", "logprob": -0.2, "top_logprobs": [{"token": ".", "logprob": -0.2}, {"token": "!", "logprob": -0.8}]},
                     ]
                 },
             }
         ],
     }
     record = OpenAIChatAdapter().capture(response, {"logprobs": True, "top_logprobs": 2})
-    assert record.structured_blocks[0].type == "tool_call"
-    assert record.selected_tokens == ["weather"]
+    assert any(block.type == "tool_call" for block in record.structured_blocks)
+    assert record.structured_blocks[-1].metadata["token_grounded"] is False
+    assert record.selected_tokens == ["Checking", "."]
 
 
 def test_openai_responses_adapter_collects_output_text_logprobs():
@@ -34,6 +36,7 @@ def test_openai_responses_adapter_collects_output_text_logprobs():
         "id": "resp_1",
         "model": "gpt-4.1-mini",
         "output": [
+            {"type": "function_call", "name": "weather_lookup", "arguments": '{"city":"Paris"}'},
             {
                 "type": "message",
                 "content": [
@@ -46,8 +49,9 @@ def test_openai_responses_adapter_collects_output_text_logprobs():
             }
         ],
     }
-    record = OpenAIResponsesAdapter().capture(response, {"include_output_text_logprobs": True, "top_logprobs": 1})
+    record = OpenAIResponsesAdapter().capture(response, {"include": ["message.output_text.logprobs"], "top_logprobs": 1})
     assert record.selected_logprobs == [-0.2]
+    assert record.structured_blocks[0].metadata["token_grounded"] is False
 
 
 def test_gemini_adapter_reads_logprobs_result():
@@ -73,13 +77,16 @@ def test_together_adapter_maps_top_logprobs():
     response = {
         "id": "t_1",
         "model": "meta-llama/test",
-        "output": {
-            "text": "Paris",
-            "tokens": ["Paris"],
-            "token_logprobs": [-0.3],
-            "top_logprobs": [{"Paris": -0.3, "London": -0.8}],
-        },
+        "choices": [
+            {
+                "message": {"role": "assistant", "content": "Paris"},
+                "logprobs": {
+                    "tokens": ["Paris"],
+                    "token_logprobs": [-0.3],
+                    "top_logprobs": [{"Paris": -0.3, "London": -0.8}],
+                },
+            }
+        ],
     }
     record = TogetherAdapter().capture(response, {"logprobs": 2})
     assert record.top_logprobs and record.top_logprobs[0][0].token == "Paris"
-

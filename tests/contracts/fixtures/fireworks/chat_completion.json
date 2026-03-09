@@ -16,6 +16,62 @@
                 {"token": "SELECT", "logprob": -0.2},
                 {"token": "UPDATE", "logprob": -1.0}
               ]
+            },
+            {
+              "token": " email",
+              "logprob": -0.1,
+              "top_logprobs": [
+                {"token": " email", "logprob": -0.1},
+                {"token": " id", "logprob": -0.7}
+              ]
+            },
+            {
+              "token": " FROM",
+              "logprob": -0.1,
+              "top_logprobs": [
+                {"token": " FROM", "logprob": -0.1},
+                {"token": " WHERE", "logprob": -0.9}
+              ]
+            },
+            {
+              "token": " users",
+              "logprob": -0.2,
+              "top_logprobs": [
+                {"token": " users", "logprob": -0.2},
+                {"token": " accounts", "logprob": -0.8}
+              ]
+            },
+            {
+              "token": " WHERE",
+              "logprob": -0.2,
+              "top_logprobs": [
+                {"token": " WHERE", "logprob": -0.2},
+                {"token": " ORDER", "logprob": -0.9}
+              ]
+            },
+            {
+              "token": " active",
+              "logprob": -0.2,
+              "top_logprobs": [
+                {"token": " active", "logprob": -0.2},
+                {"token": " verified", "logprob": -0.9}
+              ]
+            },
+            {
+              "token": " =",
+              "logprob": -0.1,
+              "top_logprobs": [
+                {"token": " =", "logprob": -0.1},
+                {"token": " !=", "logprob": -0.8}
+              ]
+            },
+            {
+              "token": " true",
+              "logprob": -0.1,
+              "top_logprobs": [
+                {"token": " true", "logprob": -0.1},
+                {"token": " false", "logprob": -0.8}
+              ]
             }
           ]
         }
@@ -31,4 +87,3 @@
     "deterministic": true
   }
 }
-

@@ -5,13 +5,14 @@ from uq_runtime.schemas.results import Action, PrimaryScoreType
 
 
 def make_record(**overrides):
+    raw_text = 'weather{"city":"Paris"}'
     base = GenerationRecord(
         provider="openai",
         transport="direct_api",
         model="gpt-test",
         temperature=0.0,
         top_p=1.0,
-        raw_text='weather{"city":"Paris"}',
+        raw_text=raw_text,
         selected_tokens=["weather", '{"city"', ":", '"Paris"', "}"],
         selected_logprobs=[-0.1, -0.2, -0.05, -3.8, -0.1],
         top_logprobs=[
@@ -22,7 +23,15 @@ def make_record(**overrides):
             [TopToken(token="}", logprob=-0.1), TopToken(token="]", logprob=-1.2)],
         ],
         structured_blocks=[
-            StructuredBlock(type="function_call", name="weather", arguments='{"city":"Paris"}', text='weather{"city":"Paris"}')
+            StructuredBlock(
+                type="function_call",
+                name="weather",
+                arguments='{"city":"Paris"}',
+                text=raw_text,
+                char_start=0,
+                char_end=len(raw_text),
+                metadata={"token_grounded": True},
+            )
         ],
         metadata={"request_logprobs": True, "request_topk": 2, "deterministic": True},
     )
@@ -80,4 +89,3 @@ def test_tool_argument_low_prob_spike_requests_regeneration():
     assert leaf_segments
     assert any(event.type == "ARGUMENT_VALUE_UNCERTAIN" for event in leaf_segments[0].events)
     assert leaf_segments[0].recommended_action == Action.REGENERATE_SEGMENT
-

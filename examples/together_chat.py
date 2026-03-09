@@ -6,12 +6,16 @@ def main() -> None:
     response = {
         "id": "tog_1",
         "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-        "output": {
-            "text": "Action: click(selector=\"#delete\")",
-            "tokens": ["click", "(", '"#delete"', ")"],
-            "token_logprobs": [-0.6, -0.1, -3.9, -0.2],
-            "top_logprobs": [{"click": -0.6, "type": -0.7}, {"(": -0.1}, {'"#delete"': -3.9, '"#cancel"': -4.0}, {")": -0.2}],
-        },
+        "choices": [
+            {
+                "message": {"role": "assistant", "content": "Paris"},
+                "logprobs": {
+                    "tokens": ["Paris"],
+                    "token_logprobs": [-0.3],
+                    "top_logprobs": [{"Paris": -0.3, "London": -0.8}],
+                },
+            }
+        ],
     }
     request_meta = {"logprobs": 2, "temperature": 0.6, "deterministic": False}
     adapter = TogetherAdapter()
@@ -22,4 +26,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

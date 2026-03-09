@@ -20,7 +20,7 @@ from uq_runtime.schemas.config import UQConfig
 client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key="...")
 response = client.chat.completions.create(
     model="openai/gpt-4o-mini",
-    messages=[{"role": "user", "content": "Call the weather tool for Paris"}],
+    messages=[{"role": "user", "content": "Return the single word Paris."}],
     logprobs=True,
     top_logprobs=5,
     provider={"require_parameters": True},
@@ -34,7 +34,8 @@ request_meta = {
     "logprobs": True,
     "top_logprobs": 5,
     "provider": {"require_parameters": True},
-    "deterministic": True,
+    "temperature": 0.0,
+    "top_p": 1.0,
 }
 record = adapter.capture(response, request_meta)
 result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
@@ -50,11 +51,12 @@ print(result.decision.action)
 
 ```text
 capability=full
-segment=tool_name action=retry_step_with_constraints
+segment=final_answer_text action=continue
 ```
 
 ## Troubleshooting
 
 - If `CapabilityReport.selected_token_logprobs` is false, the routed backend likely ignored logprob settings.
 - Keep fail-loud behavior on for action-critical runs.
+- OpenRouter inherits the upstream OpenAI-compatible chat logprob surface; structural `tool_calls` do not imply token-grounded tool uncertainty.
 - This example is suitable for local live smoke testing, but not for required public CI.
