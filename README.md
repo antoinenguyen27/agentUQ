@@ -332,7 +332,7 @@ Reach for the knobs in this order:
 - `thresholds` when you need numeric fine-tuning of one metric or priority class
 - `custom_rules` when the defaults are mostly right but a specific segment/event combination needs a different action
 
-For the exact public objects and fields, see [Public API](docs/concepts/public_api.md). For symptom-based tuning, see [Tolerance](docs/concepts/tolerance.md).
+For the exact public surfaces, signatures, and fields, see the [API Reference](docs/concepts/public_api.md). For symptom-based tuning, see [Tolerance](docs/concepts/tolerance.md).
 
 ## Capability tiers
 
@@ -368,7 +368,7 @@ Default behavior is fail-loud on missing selected-token logprobs. Top-k gaps deg
 - [OpenAI Agents quickstart](docs/quickstarts/openai_agents.md)
 - [Capability tiers](docs/concepts/capability_tiers.md)
 - [Canonical vs realized](docs/concepts/canonical_vs_realized.md)
-- [Public API](docs/concepts/public_api.md)
+- [API Reference](docs/concepts/public_api.md)
 - [Provider and framework capabilities](docs/concepts/provider_capabilities.md)
 - [Reading results](docs/concepts/reading_results.md)
 - [Segmentation](docs/concepts/segmentation.md)
