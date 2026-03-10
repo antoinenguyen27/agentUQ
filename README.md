@@ -1,3 +1,5 @@
+![Project banner](./assets/banner.png)
+
 # AgentUQ
 
 Single-pass runtime reliability gate for LLM agents using token logprobs.
