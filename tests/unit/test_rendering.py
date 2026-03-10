@@ -89,11 +89,12 @@ def test_pretty_summary_includes_explanatory_event_thresholds():
     assert "recommended_action:" in rendered
     assert "rationale:" in rendered
     assert "mode: realized" in rendered
-    assert "aggregate_primary_score:" in rendered
-    assert "score_note: aggregate over full emitted path; compare segments for operational risk" in rendered
+    assert "whole_response_score:" in rendered
+    assert "whole_response_score_note: Summarizes the full emitted path; it does not determine the recommended action by itself." in rendered
     assert "Risk Summary" in rendered
-    assert "top_risk:" in rendered
-    assert "risk_drivers:" in rendered
+    assert "decision_driving_segment:" in rendered
+    assert "decision_driving_segments:" in rendered
+    assert "decision_note: The recommended action comes from the segment events and policy mapping in this section." in rendered
     assert "capability: full" in rendered
     assert "Segments" in rendered
     assert "tool argument value" in rendered
@@ -185,16 +186,28 @@ def test_pretty_surfaces_capability_gaps_before_segments():
 
 
 def test_rich_render_requires_optional_dependency():
+    import builtins
+
     analyzer = Analyzer(UQConfig(mode="auto"))
     record, capability = _quiet_record()
     result = analyzer.analyze_step(record, capability)
+    real_import = builtins.__import__
 
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "rich.console":
+            raise ImportError("rich unavailable")
+        return real_import(name, globals, locals, fromlist, level)
+
+    builtins.__import__ = fake_import
     try:
-        result.rich_renderable()
-    except RuntimeError as exc:
-        assert "pip install agentuq[rich]" in str(exc)
-    else:
-        raise AssertionError("Expected missing rich dependency to raise RuntimeError")
+        try:
+            result.rich_renderable()
+        except RuntimeError as exc:
+            assert "pip install agentuq[rich]" in str(exc)
+        else:
+            raise AssertionError("Expected missing rich dependency to raise RuntimeError")
+    finally:
+        builtins.__import__ = real_import
 
 
 def test_rich_renderable_uses_shared_sections_with_fake_rich(monkeypatch):
@@ -275,6 +288,9 @@ def test_rich_renderable_uses_shared_sections_with_fake_rich(monkeypatch):
 
     assert "Summary" in rendered
     assert "Risk Summary" in rendered
+    assert "whole response score" in rendered
+    assert "decision driving segment" in rendered
+    assert "decision note" in rendered
     assert "Segments" in rendered
     assert "tool argument value" in rendered
     assert "code=ARGUMENT_VALUE_UNCERTAIN" in rendered

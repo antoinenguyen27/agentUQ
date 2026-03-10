@@ -161,8 +161,8 @@ def _risk_driver_label(result: UQResult) -> str:
     if not drivers:
         return "none"
     if all(segment.priority in {"informational", "low_priority"} for segment in drivers):
-        return "informational only"
-    return "action-bearing segments"
+        return "informational prose only"
+    return "action-bearing segment(s)"
 
 
 def _risk_drivers(result: UQResult) -> str:
@@ -358,8 +358,8 @@ def build_display_model(
         ("recommended_action", ACTION_LABELS[result.action]),
         ("rationale", result.decision.rationale if result.decision is not None else "No decision rationale available."),
         ("mode", result.mode),
-        ("aggregate_primary_score", f"{_fmt(result.primary_score)} {result.primary_score_type.value}"),
-        ("score_note", "aggregate over full emitted path; compare segments for operational risk"),
+        ("whole_response_score", f"{_fmt(result.primary_score)} {result.primary_score_type.value}"),
+        ("whole_response_score_note", "Summarizes the full emitted path; it does not determine the recommended action by itself."),
         ("capability", result.capability_level.value),
     ]
     capability_gaps: list[str] = []
@@ -386,7 +386,7 @@ def build_display_model(
 
     risk_summary = [
         (
-            "top_risk",
+            "decision_driving_segment",
             (
                 f"{_friendly_segment_label(top_risk[0].kind)} [{top_risk[0].priority}] -> "
                 f"{ACTION_LABELS[top_risk[0].recommended_action]}"
@@ -394,8 +394,9 @@ def build_display_model(
             if top_risk
             else "none"
         ),
-        ("action_driver", _risk_driver_label(result)),
-        ("risk_drivers", _risk_drivers(result)),
+        ("decision_driver_type", _risk_driver_label(result)),
+        ("decision_driving_segments", _risk_drivers(result)),
+        ("decision_note", "The recommended action comes from the segment events and policy mapping in this section."),
     ]
 
     technical_details: list[tuple[str, str]] = []
