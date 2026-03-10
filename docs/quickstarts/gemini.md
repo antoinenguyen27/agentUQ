@@ -52,17 +52,17 @@ AgentUQ reads `candidate.logprobsResult` and normalizes chosen candidates plus t
 
 ```text
 Summary
-  mode: canonical
-  reason: auto-selected canonical mode from strict greedy parameter inference
-  aggregate_primary_score: 1.116 g_nll
-  action: continue
+  recommended_action: Continue
   rationale: Policy preset balanced selected continue based on segment events.
+  mode: canonical
+  whole_response_score: 1.116 g_nll
+  whole_response_score_note: Summarizes the full emitted path; it does not determine the recommended action by itself.
   capability: full
 
 Segments
-  json_leaf [important_action] -> continue
+  JSON value [important_action] -> Continue
     text: sunny
-    metrics: score=0.387 avg_surprise=0.194 max_surprise=0.271 mean_entropy=0.574
+    surprise: score=0.387 nll=0.387 avg=0.194 p95=0.271 max=0.271 tail=0.271
     events: none
 ```
 

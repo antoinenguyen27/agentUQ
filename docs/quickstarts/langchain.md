@@ -40,17 +40,17 @@ print(result.pretty())
 
 ```text
 Summary
-  mode: canonical
-  reason: auto-selected canonical mode from strict greedy parameter inference
-  aggregate_primary_score: 0.025 g_nll
-  action: continue
+  recommended_action: Continue
   rationale: Policy preset balanced selected continue based on segment events.
+  mode: canonical
+  whole_response_score: 0.025 g_nll
+  whole_response_score_note: Summarizes the full emitted path; it does not determine the recommended action by itself.
   capability: full
 
 Segments
-  final_answer_text [informational] -> continue
+  final answer prose [informational] -> Continue
     text: Paris.
-    metrics: score=0.025 avg_surprise=0.013 max_surprise=0.019 mean_entropy=0.108
+    surprise: score=0.025 nll=0.025 avg=0.013 p95=0.019 max=0.019 tail=0.019
     events: none
 ```
 

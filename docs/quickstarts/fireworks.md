@@ -46,17 +46,17 @@ print(result.pretty())
 
 ```text
 Summary
-  mode: canonical
-  reason: auto-selected canonical mode from explicit deterministic metadata
-  aggregate_primary_score: 3.844 g_nll
-  action: dry_run_verify
+  recommended_action: Dry-run verify
   rationale: Policy preset balanced selected dry_run_verify based on segment events.
+  mode: canonical
+  whole_response_score: 3.844 g_nll
+  whole_response_score_note: Summarizes the full emitted path; it does not determine the recommended action by itself.
   capability: full
 
 Segments
-  sql_clause [critical_action] -> dry_run_verify
+  SQL clause [critical_action] -> Dry-run verify
     text: WHERE active = true
-    metrics: score=1.922 avg_surprise=0.641 max_surprise=4.182 mean_entropy=1.021
+    surprise: score=1.922 nll=1.922 avg=0.641 p95=4.182 max=4.182 tail=4.182
     events:
       - LOW_PROB_SPIKE [high]: Highly improbable token spike detected. (max_surprise=4.182 >= spike_surprise=3.500)
 ```

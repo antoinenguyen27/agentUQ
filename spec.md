@@ -442,17 +442,19 @@ Examples:
 
 #### Level 1 — semantic block segmentation
 
-Within a step, split into semantic blocks using provider structure first:
+Within a step, split into semantic blocks using provider structure first, then explicit literal contexts:
 
 * assistant natural language text blocks,
 * function / tool name,
 * tool argument string,
 * structured JSON output,
-* code block,
-* SQL block,
-* XML / YAML / DSL block,
-* browser action line,
-* final answer block.
+* fenced code / SQL / shell block,
+* inline code span,
+* exact ReAct-labeled block,
+* standalone snippet line or explicit snippet tail,
+* final answer or observation text block.
+
+Text blocks are structural containers. If they contain embedded action-bearing child spans, the implementation emits residual prose slices around those children rather than one scored wrapper segment for the whole block.
 
 #### Level 2 — atomic actionable segments
 
@@ -517,23 +519,37 @@ Example commands:
 * `type(selector="#email", text="...")`
 * `navigate(url="...")`
 
-Each command is a segment; each argument is an atomic child segment.
+For v1 heuristics, detect only documented command forms in explicit literal contexts. Each command is a segment; each recognized argument value is an atomic child segment.
 
 #### SQL
 
-Split into:
+Only detect SQL in explicit literal contexts such as structured blocks, fenced blocks, inline code, standalone snippet lines, or explicit snippet tails.
 
-* statement type,
-* tables,
-* selected columns,
-* predicates,
-* join conditions,
-* ordering / limit.
+Emit `sql_clause` segments for top-level clauses such as:
+
+* `SELECT ...`
+* `FROM ...`
+* `WHERE ...`
+* `JOIN ...`
+* `GROUP BY ...`
+* `ORDER BY ...`
+* `LIMIT ...`
 
 #### Code
 
-If parsable, use AST leaves and statements.
-If not parsable, split by line and identifier / literal spans.
+Emit `code_statement` segments for recognizable code statements in explicit literal contexts. v1 does not expose AST-leaf, identifier, or literal sub-segmentation for code.
+
+#### Shell
+
+Only detect shell commands in supported command contexts such as fenced shell blocks, prompt-prefixed lines, explicit command labels, and inline code spans.
+
+Emit:
+
+* command head as `identifier` or `path`
+* `shell_flag`
+* `shell_value`
+* `url`
+* `path`
 
 ### 8.5 Segment kinds
 
@@ -561,9 +577,9 @@ The product defines these segment kinds:
 
 Each segment kind maps to an operational priority:
 
-* **critical_action**: tool name, destructive commands, SQL predicates, URLs, selectors, IDs
-* **important_action**: argument leaves, browser text values, code statements
-* **informational**: final prose answer
+* **critical_action**: `tool_name`, `browser_action`, `browser_selector`, `url`, `identifier`, `path`, `sql_clause`, `shell_flag`, `shell_value`
+* **important_action**: `tool_arguments_raw`, `tool_argument_leaf`, `json_leaf`, `browser_text_value`, `code_statement`
+* **informational**: final prose answer and unknown text
 * **low_priority**: reasoning text
 
 Policies are stricter for higher-priority classes.
@@ -640,7 +656,7 @@ Interpretation:
 
 #### `ACTION_HEAD_UNCERTAIN`
 
-Triggered on `tool_name`, `browser_action`, `sql_clause[statement_type]`, etc. when:
+Triggered on `tool_name`, `browser_action`, `sql_clause`, etc. when:
 
 * `mean_margin_log < τ_action_head` or `avg_surprise > τ_action_head_surprise`
 
@@ -776,11 +792,11 @@ The policy engine supports these actions:
 * if `ARGUMENT_VALUE_UNCERTAIN` → `regenerate_segment`
 * if schema invalid after one retry → `block_execution`
 
-#### Browser action selector / URL / ID
+#### Browser selector / URL / identifier / path / shell flag / shell value
 
-* if `LOW_PROB_SPIKE` or `LOW_MARGIN_CLUSTER` → `ask_user_confirmation` for destructive or irreversible actions; otherwise `regenerate_segment`
+* if `LOW_PROB_SPIKE` or `LOW_MARGIN_CLUSTER` → `ask_user_confirmation`
 
-#### SQL `WHERE` / `DELETE` / `UPDATE`
+#### SQL clause
 
 * on any `high` or `critical` event → `dry_run_verify`
 * if dry-run fails or uncertainty remains → `ask_user_confirmation` or `block_execution`
