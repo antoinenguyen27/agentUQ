@@ -112,6 +112,130 @@ AgentUQ is intentionally optimized for:
 - low latency and low cost,
 - and direct integration into agent control flows.
 
+## Common questions
+
+### Isn't this just perplexity?
+
+It uses the same likelihood family, but it plays a different role.
+
+Perplexity is usually treated as a whole-sequence quality summary. AgentUQ uses mode-correct sequence likelihood as runtime telemetry, adds local token diagnostics, and then localizes the signal onto action-bearing spans so the result can drive control actions.
+
+That is the important difference:
+
+- whole-answer summary metric
+- versus step-level runtime control signal
+
+See also [Canonical vs realized](canonical_vs_realized.md) and [Segmentation](segmentation.md).
+
+### Why should logprobs mean anything?
+
+Because they are the model's own conditional preference signal over the tokens it emitted.
+
+That does not make them a truth oracle. It does make them a useful black-box signal for where generation looked brittle, ambiguous, or locally unstable.
+
+This is exactly the kind of signal you want for cheap runtime gating:
+
+- where should I retry?
+- where should I verify?
+- where should I avoid executing yet?
+
+### If models can hallucinate confidently, why is this still useful?
+
+Because the right comparison is not "AgentUQ versus a perfect verifier." The right comparison is:
+
+- no gate,
+- a cheap first-pass gate,
+- or a slower second layer such as retrieval-backed verification, semantic checking, sandboxing, an LLM judge, or human review.
+
+AgentUQ is useful because it improves substantially over no gate while remaining cheap enough to run everywhere. When it finds a brittle or ambiguous step, it can trigger a slower layer selectively instead of paying that cost on every step.
+
+### Why do you insist on greedy mode for G-NLL?
+
+Because `G-NLL` is supposed to describe the greedy path.
+
+Once the run is sampled, or once decoding metadata is unknown, you are no longer scoring the canonical greedy answer. The honest probability object is the realized emitted path. That is why AgentUQ treats canonical and realized mode as different objects rather than small variations of the same number.
+
+See [Canonical vs realized](canonical_vs_realized.md).
+
+### Does segmentation break the math?
+
+No. Segmentation is a localization step, not a new scoring family.
+
+For non-overlapping leaf segments, the emitted-path likelihood of the whole step decomposes over those leaves. That means AgentUQ is not inventing separate probabilities for SQL, selectors, or prose; it is attributing one emitted-path likelihood object to smaller operational units.
+
+That is what turns a blunt whole-answer score into a useful control signal.
+
+### Are segment scores independent?
+
+No.
+
+Each segment is still conditioned on the prompt and the tokens that came before it. A risky SQL clause and the prose before it are part of one autoregressive path, not separate independent random variables.
+
+So segment scores should be read as local diagnostics, not independent beliefs.
+
+### Why not use semantic entropy or another stronger hallucination method?
+
+Because the best method depends on the operating point you care about.
+
+Semantic entropy can be stronger for meaning-level inconsistency and hallucination detection, but it usually needs multiple generations and extra semantic comparison. AgentUQ is optimized for a cheaper operating point:
+
+- single pass
+- black-box provider compatibility
+- low latency
+- direct actionability in agent loops
+
+That tradeoff is intentional, not accidental.
+
+### What is AgentUQ actually good at?
+
+It is strongest when local uncertainty has an obvious operational consequence.
+
+Examples:
+
+- a tool argument that may be invalid
+- a selector that might target the wrong element
+- a URL or path that might be malformed
+- an SQL clause that should be validated before execution
+- prose that looks shaky enough to annotate or verify
+
+These are the places where a localized signal is more useful than a global "confidence" score.
+
+### What should I do with the result?
+
+Treat it as a routing signal for the next step in your system.
+
+Examples:
+
+- `continue`: proceed normally
+- `continue_with_annotation`: continue, but attach the result to logs or traces
+- `regenerate_segment`: repair one risky field or clause
+- `retry_step_with_constraints`: reprompt the agent with tighter instructions, lower temperature, or stronger schema reminders
+- `dry_run_verify`: run `EXPLAIN`, lint, schema validation, selector existence checks, or similar safe validators
+- `ask_user_confirmation`: interrupt before a side effect
+- `block_execution`: fail closed
+
+In retrieval-heavy systems, another valid response is to fetch more context and rerun the step with stronger grounding.
+
+See [Acting on decisions](acting_on_decisions.md).
+
+### How should I tune the system?
+
+Start with the coarse knobs first.
+
+- `policy` changes what AgentUQ tends to do after it sees risk
+- `tolerance` changes how easily events are emitted
+- `thresholds` fine-tune individual metric cutoffs
+- `custom_rules` override one specific segment/event case without changing the whole preset
+
+In practice:
+
+- if the system is too passive, try a stricter policy or stricter tolerance
+- if it is too noisy, start by relaxing tolerance before editing raw numbers
+- only tune thresholds when you already know which metric is responsible
+- use custom rules when your defaults are broadly right but one span type has a sharper requirement
+
+See [Policies](policies.md) and [Tolerance](tolerance.md).
+
 ## Research map
 
 - [Aichberger et al. 2026](https://arxiv.org/abs/2412.15176v2): revisits greedy-path negative log-likelihood as a first-class uncertainty object for LLMs

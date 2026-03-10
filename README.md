@@ -4,7 +4,7 @@ Single-pass runtime reliability instrumentation for LLM agents using token logpr
 
 AgentUQ does not claim to know whether an output is true. It turns token logprobs into localized runtime signals that can change agent behavior: retry, regenerate a risky span, dry-run verify an action, block execution, or ask for user confirmation.
 
-It sits above having no gate at all, and below slower, more expensive layers such as LLM-as-a-judge, retrieval-backed verification, sandbox execution, or human review. The goal is to give agent developers a cheap first-pass gate that is grounded in the model's own probability signal and fast enough to run on every step.
+It sits above having no gate or guardrails at all, and below slower, more expensive layers such as LLM-as-a-judge, retrieval-backed verification, sandbox execution, or human review. The goal is to give agent developers a cheap first-pass gate that is grounded in the model's own probability signal and fast and light enough to run on every step.
 
 ## What it is for
 
@@ -70,6 +70,53 @@ AgentUQ's method choice is intentionally narrow and research-backed:
 - Stronger meaning-level hallucination methods such as semantic entropy exist, but they usually need multiple samples and a higher runtime budget: [Farquhar et al. 2024](https://www.nature.com/articles/s41586-024-07421-0)
 
 AgentUQ's product claim is therefore modest but strong: use the best lightweight probability signal the model already exposes, use it honestly, localize it to the spans that matter, and trigger cheap control actions before reaching for heavier verification.
+
+## Common questions
+
+<details>
+<summary>Open the FAQ</summary>
+
+**Isn't this just perplexity?**
+
+It uses the same likelihood family, but it is doing a different job. Perplexity is usually used as a whole-sequence quality summary; AgentUQ takes mode-correct likelihood, adds local token diagnostics, and then routes that signal onto the exact spans that matter so you can decide whether to continue, retry, verify, confirm, or block. See [Canonical vs realized](docs/concepts/canonical_vs_realized.md), [Segmentation](docs/concepts/segmentation.md), and [Acting on decisions](docs/concepts/acting_on_decisions.md).
+
+**Why should logprobs mean anything?**
+
+They are the model's own conditional preference signal over the tokens it emitted. That makes them useful runtime telemetry: not a proof of truth, but a direct signal of where the model looked brittle, ambiguous, or unstable while generating the step. See [Research grounding](docs/concepts/research_grounding.md).
+
+**If models can hallucinate confidently, why is this still useful?**
+
+Because AgentUQ is a gate, not a verifier. It is valuable when you want a cheap first-pass signal for brittle or ambiguous steps, especially on structured outputs and action-bearing text, before paying for a slower layer like retrieval-backed verification, an external validator, an LLM judge, sandbox execution, or human review. See [Research grounding](docs/concepts/research_grounding.md).
+
+**Why do you insist on greedy mode for G-NLL?**
+
+Because `G-NLL` is meant to describe the greedy path. If the run was sampled, or you cannot prove it was greedy, then the honest thing to score is the path that actually came out. That is why AgentUQ switches to realized mode instead of pretending a sampled path was canonical. See [Canonical vs realized](docs/concepts/canonical_vs_realized.md).
+
+**Does segmentation break the math?**
+
+No. Segmentation does not invent a new uncertainty score for SQL, selectors, or prose. For non-overlapping leaf spans, it simply attributes the same emitted-path likelihood to smaller operational units, which is what makes the score useful inside agent loops. See [Segmentation](docs/concepts/segmentation.md) and [Research grounding](docs/concepts/research_grounding.md).
+
+**Are segment scores independent?**
+
+No. A later segment is still conditioned on the prompt and everything the model already emitted before it. Segment scores are local diagnostics within one generated path, not separate independent probabilities that should be multiplied together. See [Research grounding](docs/concepts/research_grounding.md).
+
+**Why not use semantic entropy or another stronger hallucination method?**
+
+Those methods can be stronger in some settings, but they usually require multiple generations or extra semantic comparison steps. AgentUQ is optimized for a different operating point: single-pass, black-box, low-latency runtime gating that is cheap enough to run on every step. See [Research grounding](docs/concepts/research_grounding.md).
+
+**What is AgentUQ actually good at?**
+
+It is strongest on structured outputs and action-bearing spans where local uncertainty is operationally meaningful: tool arguments, JSON leaves, SQL, browser actions, selectors, URLs, shell commands, and other text that may be executed or validated. That is where a localized risk signal is most useful. See [Segmentation](docs/concepts/segmentation.md) and [Acting on decisions](docs/concepts/acting_on_decisions.md).
+
+**What should I do with the result?**
+
+Use it to route the next step. On low risk, continue. When only prose looks uncertain, continue and annotate the trace. When one field or clause is risky, repair or regenerate that part if your framework supports it. When the whole step is unstable, reprompt the agent or retry with tighter constraints. When the answer needs more external grounding, retrieve more context or hand off to a stronger verifier. Before side effects, dry-run, ask for confirmation, or block. See [Acting on decisions](docs/concepts/acting_on_decisions.md).
+
+**How should I tune the system?**
+
+Start with `policy` and `tolerance`, not raw thresholds. `policy` controls what AgentUQ does after it sees risk, such as whether it prefers annotation, retry, confirmation, or blocking. `tolerance` controls how easily it decides something looks risky in the first place. Only after those feel roughly right should you use `thresholds` for numeric fine-tuning, and `custom_rules` when the defaults are mostly correct but one segment/event case needs a specific override. See [Policies](docs/concepts/policies.md), [Tolerance](docs/concepts/tolerance.md), and [Acting on decisions](docs/concepts/acting_on_decisions.md).
+
+</details>
 
 ## Install
 
