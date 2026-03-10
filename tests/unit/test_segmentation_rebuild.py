@@ -2,6 +2,7 @@ from uq_runtime.analysis.analyzer import Analyzer
 from uq_runtime.analysis.segmentation import segment_record
 from uq_runtime.schemas.config import SegmentationConfig, UQConfig
 from uq_runtime.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
+from uq_runtime.schemas.results import Action
 
 
 def _record(raw_text: str, structured_blocks: list[StructuredBlock] | None = None) -> GenerationRecord:
@@ -158,19 +159,28 @@ def test_markdown_bullet_sql_is_isolated_from_bullet_text():
     assert [segment.kind for segment in segments] == ["unknown_text", "sql_clause", "sql_clause"]
 
 
-def test_inline_browser_actions_are_extracted_from_prose():
-    segments = segment_record(_record('First explain it. Then run click(selector="#submit") and navigate(url="https://example.com").'), SegmentationConfig())
-    kinds = [segment.kind for segment in segments]
+def test_inline_code_browser_actions_are_extracted_from_literal_context():
+    segments = segment_record(_record('First explain it. Then run `click(selector="#submit")`.'), SegmentationConfig())
 
-    assert "browser_action" in kinds
-    assert "browser_selector" in kinds
-    assert "url" in kinds
+    assert [segment.kind for segment in segments] == ["unknown_text", "browser_action", "browser_selector", "unknown_text"]
+
+
+def test_snippet_tail_browser_action_is_extracted():
+    segments = segment_record(_record('Run: click(selector="#submit")'), SegmentationConfig())
+
+    assert [segment.kind for segment in segments] == ["unknown_text", "browser_action", "browser_selector"]
 
 
 def test_navigate_url_is_not_downgraded_to_browser_text_value():
     segments = segment_record(_record('navigate(url="https://example.com")'), SegmentationConfig())
 
     assert {segment.kind for segment in segments} == {"browser_action", "url"}
+
+
+def test_click_positional_string_is_treated_as_browser_selector():
+    segments = segment_record(_record('click("text=Submit")'), SegmentationConfig())
+
+    assert {segment.kind for segment in segments} == {"browser_action", "browser_selector"}
 
 
 def test_multiline_sql_emits_all_major_clauses():
@@ -189,8 +199,8 @@ def test_mixed_explanation_and_fenced_sql_keeps_prose_and_sql_separate():
     assert "code_statement" not in {segment.kind for segment in segments}
 
 
-def test_mixed_explanation_and_inline_browser_action_keep_action_separate():
-    segments = segment_record(_record('Explain it, then click(selector="#submit").'), SegmentationConfig())
+def test_mixed_explanation_and_inline_code_browser_action_keep_action_separate():
+    segments = segment_record(_record('Explain it, then `click(selector="#submit")`.'), SegmentationConfig())
 
     assert [segment.kind for segment in segments] == ["unknown_text", "browser_action", "browser_selector", "unknown_text"]
 
@@ -216,3 +226,73 @@ def test_pretty_debug_no_longer_shows_code_for_plain_final_prose():
 
     assert "final_answer_text" in rendered
     assert "code_statement" not in rendered
+
+
+def test_sql_prose_does_not_promote_to_sql_clause():
+    segments = segment_record(_record("A query to select all users from a database is a command written in SQL."), SegmentationConfig())
+
+    assert {segment.kind for segment in segments} == {"unknown_text"}
+
+
+def test_browser_like_prose_stays_text():
+    segments = segment_record(_record('You can describe it as click(selector="#submit") in the docs.'), SegmentationConfig())
+
+    assert {segment.kind for segment in segments} == {"unknown_text"}
+
+
+def test_generic_function_like_prose_is_not_browser_dsl():
+    segments = segment_record(_record("foo(bar) is just notation here."), SegmentationConfig())
+
+    assert {segment.kind for segment in segments} == {"unknown_text"}
+
+
+def test_shell_like_prose_stays_text():
+    segments = segment_record(_record("curl requests often use --request POST for APIs."), SegmentationConfig())
+
+    assert {segment.kind for segment in segments} == {"unknown_text"}
+
+
+def test_prompt_prefixed_shell_command_is_extracted():
+    segments = segment_record(_record("$ curl --request POST https://example.com/api ./payload.json"), SegmentationConfig())
+
+    assert {segment.kind for segment in segments} == {"identifier", "shell_flag", "shell_value", "url", "path"}
+
+
+def test_code_like_prose_stays_text():
+    segments = segment_record(_record("return all users from the table."), SegmentationConfig())
+
+    assert {segment.kind for segment in segments} == {"unknown_text"}
+
+
+def test_explanatory_final_answer_only_emits_real_sql_clauses():
+    raw_text = "A query to select all users from a database is a command written in SQL.\n\nSELECT *\nFROM users;"
+    record = _record(
+        raw_text,
+        [StructuredBlock(type="output_text", text=raw_text, char_start=0, char_end=len(raw_text), metadata={"role": "final"})],
+    )
+
+    segments = segment_record(record, SegmentationConfig())
+
+    assert [segment.text for segment in segments if segment.kind == "sql_clause"] == ["SELECT *", "FROM users;"]
+
+
+def test_analysis_keeps_sql_risk_on_real_query_segments_only():
+    raw_text = "A query to select all users from a database is a command written in SQL.\n\nSELECT *\nFROM users;"
+    record = GenerationRecord(
+        provider="openai",
+        transport="direct_api",
+        model="gpt-test",
+        temperature=0.3,
+        top_p=1.0,
+        raw_text=raw_text,
+        selected_tokens=[raw_text],
+        selected_logprobs=[-0.5],
+        top_logprobs=[[TopToken(token=raw_text, logprob=-0.5), TopToken(token="other", logprob=-0.52)]],
+        structured_blocks=[StructuredBlock(type="output_text", text=raw_text, char_start=0, char_end=len(raw_text), metadata={"role": "final"})],
+        metadata={"request_logprobs": True, "request_topk": 2, "deterministic": False},
+    )
+
+    result = Analyzer(UQConfig(mode="realized", tolerance="strict")).analyze_step(record, _capability())
+
+    assert [segment.text for segment in result.segments if segment.kind == "sql_clause"] == ["SELECT *", "FROM users;"]
+    assert result.action == Action.DRY_RUN_VERIFY

@@ -138,6 +138,7 @@ Default `summary` output includes:
 - `aggregate_primary_score` is length-dependent and summarizes the full emitted path.
 - `top_risk` and `risk_basis` tell you which segment actually drove the operational recommendation.
 - Treat prose-only warnings as annotation signals unless they outrank or coincide with action-bearing spans.
+- Heuristic action-bearing spans come from explicit literal contexts such as structured blocks, fenced or inline code, exact ReAct labels, standalone snippet lines, and short snippet-intro tails like `Query: ...`.
 
 ## Configuration model
 

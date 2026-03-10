@@ -11,7 +11,7 @@ from uq_runtime.schemas.config import SegmentationConfig
 from uq_runtime.schemas.records import GenerationRecord, StructuredBlock
 from uq_runtime.utils.code_spans import split_code_statements
 from uq_runtime.utils.json_spans import parse_json_leaves
-from uq_runtime.utils.sql_parser import split_sql_clauses
+from uq_runtime.utils.sql_parser import is_sql_continuation, is_sql_statement, sql_statement_head, split_sql_clauses
 
 
 PRIORITY_BY_KIND = {
@@ -35,13 +35,24 @@ PRIORITY_BY_KIND = {
 }
 
 REACT_PATTERN = re.compile(r"^(Thought:|Action:|Action Input:|Observation:|Final Answer:)\s*", re.MULTILINE | re.IGNORECASE)
-BROWSER_LINE_PATTERN = re.compile(r"^\s*(?:Action:\s*)?([a-zA-Z_][\w]*)\((.*)\)\s*$", re.DOTALL)
-INLINE_BROWSER_PATTERN = re.compile(r"([a-zA-Z_][\w]*)\(([^()\n]*)\)")
 FENCED_CODE_PATTERN = re.compile(r"```([^\n`]*)\n(.*?)```", re.DOTALL)
-SQL_START_PATTERN = re.compile(r"\b(SELECT|UPDATE|DELETE|INSERT\s+INTO)\b", re.IGNORECASE)
-SQL_CONTINUATION_PATTERN = re.compile(r"^\s*(FROM|WHERE|JOIN|ORDER\s+BY|GROUP\s+BY|LIMIT|SET|VALUES)\b", re.IGNORECASE)
+INLINE_CODE_PATTERN = re.compile(r"(?<!`)`([^`\n]+)`(?!`)")
 URL_PATTERN = re.compile(r"https?://[^\s\"')]+")
 PATH_PATTERN = re.compile(r"(?:\.\.?/|/|~/)[^\s]+")
+CALL_PATTERN = re.compile(r"^[A-Za-z_][\w.]*\([^)]*\)\s*;?$")
+ASSIGNMENT_PATTERN = re.compile(r"^[A-Za-z_][\w.\[\]]*\s*=\s*[^=].+")
+PY_DEF_PATTERN = re.compile(r"^(?:async\s+def|def)\s+[A-Za-z_][\w]*\s*\(.*\)\s*:\s*$")
+PY_CLASS_PATTERN = re.compile(r"^class\s+[A-Za-z_][\w]*(?:\s*\(.*\))?\s*:\s*$")
+JS_FUNCTION_PATTERN = re.compile(r"^(?:async\s+)?function\s+[A-Za-z_][\w]*\s*\(.*\)\s*\{?\s*$")
+IMPORT_PATTERN = re.compile(r"^(?:import\s+[\w.*{}, ]+|from\s+[\w.]+\s+import\s+[\w.*{}, ]+)\s*$")
+DECLARATIVE_PATTERN = re.compile(r"^(?:const|let|var|interface|enum|type)\s+\S+")
+CONTROL_FLOW_PATTERN = re.compile(r"^(?:if|elif|else|for|while|try|except|with)\b.*(?:[:{]|\)\s*\{)\s*$")
+PROMPT_PATTERN = re.compile(r"^\$\s+")
+BROWSER_CALL_PATTERN = re.compile(r"^\s*([A-Za-z_][\w]*)\((.*)\)\s*$", re.DOTALL)
+NAMED_BROWSER_ARG_PATTERN = re.compile(r"^\s*([A-Za-z_][\w]*)\s*=\s*(['\"])(.*)\2\s*$", re.DOTALL)
+QUOTED_VALUE_PATTERN = re.compile(r"^\s*(['\"])(.*)\1\s*$", re.DOTALL)
+TOKEN_VALUE_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9._-]*$")
+
 COMMON_SHELL_COMMANDS = {
     "bash",
     "cat",
@@ -67,15 +78,33 @@ COMMON_SHELL_COMMANDS = {
     "touch",
     "zsh",
 }
-CODE_KEYWORD_PATTERN = re.compile(
-    r"^(?:"
-    r"def |class |return\b|if\b|elif\b|else:|for\b|while\b|try:|except\b|with\b|import\b|from\b|"
-    r"const |let |var |function\b|async\b|await\b|public\b|private\b|protected\b|"
-    r"package\b|interface\b|enum\b|type\b"
-    r")"
-)
-ASSIGNMENT_PATTERN = re.compile(r"^[A-Za-z_][\w.\[\]]*\s*=\s*[^=].+")
-CALL_PATTERN = re.compile(r"^[A-Za-z_][\w.]*\([^)]*\)\s*;?$")
+BROWSER_VERBS = {"click", "type", "navigate"}
+BROWSER_ARG_KEYS = {
+    "click": {"selector", "target", "id"},
+    "type": {"selector", "target", "id", "text"},
+    "navigate": {"url", "href", "src"},
+}
+SNIPPET_LABEL_WORDS = {
+    "action",
+    "browser",
+    "call",
+    "cmd",
+    "code",
+    "command",
+    "example",
+    "json",
+    "path",
+    "payload",
+    "query",
+    "response",
+    "run",
+    "selector",
+    "shell",
+    "snippet",
+    "sql",
+    "url",
+}
+SHELL_LABEL_WORDS = {"cmd", "command", "run", "shell"}
 
 
 @dataclass
@@ -110,11 +139,36 @@ class ReactBlock:
 
 
 @dataclass
-class InlineCandidate:
-    kind: str
-    char_span: tuple[int, int]
+class LiteralCandidate:
     text: str
-    metadata: dict[str, Any]
+    char_span: tuple[int, int]
+    cover_span: tuple[int, int]
+    evidence: str
+    allow_shell: bool = False
+    hint: str | None = None
+
+
+@dataclass
+class BrowserArgument:
+    key: str | None
+    value: str
+    kind: str
+    value_span: tuple[int, int]
+
+
+@dataclass
+class BrowserInvocation:
+    command: str
+    command_span: tuple[int, int]
+    arguments: list[BrowserArgument]
+
+
+@dataclass
+class ShellToken:
+    kind: str
+    text: str
+    span: tuple[int, int]
+    role: str
 
 
 def _token_char_spans(tokens: list[str]) -> list[tuple[int, int]]:
@@ -273,44 +327,7 @@ def _looks_like_json(text: str) -> bool:
     return bool(parse_json_leaves(stripped))
 
 
-def _looks_like_sql(text: str) -> bool:
-    stripped = text.strip()
-    if not stripped:
-        return False
-    clauses = split_sql_clauses(stripped)
-    if not clauses:
-        return False
-    first_clause = clauses[0][0]
-    if first_clause not in {"SELECT", "UPDATE", "DELETE", "INSERT INTO"}:
-        return False
-    return clauses[0][2] == 0
-
-
-def _looks_like_sql_continuation(text: str) -> bool:
-    stripped = text.strip()
-    if not stripped:
-        return False
-    return bool(SQL_CONTINUATION_PATTERN.match(stripped))
-
-
-def _looks_like_code_line(text: str) -> bool:
-    stripped = text.strip()
-    if not stripped or stripped.startswith(("-", "*")):
-        return False
-    if CODE_KEYWORD_PATTERN.match(stripped):
-        return True
-    if ASSIGNMENT_PATTERN.match(stripped):
-        return True
-    if stripped.endswith((";", "{", "}")):
-        return True
-    if "=>" in stripped:
-        return True
-    if CALL_PATTERN.match(stripped):
-        return True
-    return False
-
-
-def _fenced_kind(language: str) -> str:
+def _fenced_kind(language: str) -> str | None:
     lang = language.strip().lower()
     if lang == "sql":
         return "sql"
@@ -318,7 +335,9 @@ def _fenced_kind(language: str) -> str:
         return "json"
     if lang in {"bash", "sh", "zsh", "shell"}:
         return "shell"
-    return "code"
+    if lang:
+        return "code"
+    return None
 
 
 def _is_path(value: str) -> bool:
@@ -329,26 +348,140 @@ def _is_identifier(value: str) -> bool:
     return bool(re.fullmatch(r"[A-Za-z_][\w./:-]*", value))
 
 
-def _shell_line(line: str) -> bool:
-    stripped = line.strip()
-    if not stripped or stripped.startswith("#"):
+def _balanced_delimiters(text: str) -> bool:
+    pairs = {"(": ")", "[": "]", "{": "}"}
+    closing = {value: key for key, value in pairs.items()}
+    stack: list[str] = []
+    quote: str | None = None
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if quote is not None:
+            if char == "\\":
+                index += 2
+                continue
+            if char == quote:
+                quote = None
+            index += 1
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            index += 1
+            continue
+        if char in pairs:
+            stack.append(char)
+        elif char in closing:
+            if not stack or stack[-1] != closing[char]:
+                return False
+            stack.pop()
+        index += 1
+    return quote is None and not stack
+
+
+def _looks_like_code_line(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped or stripped.startswith(("-", "*")):
         return False
-    if stripped.startswith(("-", "*")):
-        return False
-    if stripped.startswith("$ "):
-        stripped = stripped[2:].strip()
-    try:
-        parts = shlex.split(stripped)
-    except ValueError:
-        return False
-    if not parts:
-        return False
-    head = parts[0]
-    if head not in COMMON_SHELL_COMMANDS and not _is_path(head):
-        return False
-    if len(parts) == 1:
-        return False
-    return any(token.startswith("-") or URL_PATTERN.fullmatch(token) or _is_path(token) for token in parts[1:])
+    if ASSIGNMENT_PATTERN.match(stripped):
+        return True
+    if CALL_PATTERN.match(stripped):
+        return True
+    if PY_DEF_PATTERN.match(stripped) or PY_CLASS_PATTERN.match(stripped):
+        return True
+    if JS_FUNCTION_PATTERN.match(stripped) or IMPORT_PATTERN.match(stripped) or DECLARATIVE_PATTERN.match(stripped):
+        return True
+    if CONTROL_FLOW_PATTERN.match(stripped):
+        return True
+    if "=>" in stripped and _balanced_delimiters(stripped):
+        return True
+    if stripped.endswith(("{", "}")) and _balanced_delimiters(stripped):
+        return True
+    if stripped.endswith(";") and _balanced_delimiters(stripped):
+        return bool(re.search(r"[=()[\]{}.]|return\b|await\b|new\b", stripped))
+    return False
+
+
+def _split_browser_arguments(text: str) -> list[tuple[str, int, int]]:
+    items: list[tuple[str, int, int]] = []
+    start = 0
+    quote: str | None = None
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if quote is not None:
+            if char == "\\":
+                index += 2
+                continue
+            if char == quote:
+                quote = None
+            index += 1
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            index += 1
+            continue
+        if char == ",":
+            item = text[start:index].strip()
+            if item:
+                item_start = start + len(text[start:index]) - len(text[start:index].lstrip())
+                item_end = index - len(text[start:index]) + len(text[start:index].rstrip())
+                items.append((item, item_start, item_end))
+            start = index + 1
+        index += 1
+    tail = text[start:]
+    item = tail.strip()
+    if item:
+        item_start = start + len(tail) - len(tail.lstrip())
+        item_end = len(text) - len(tail) + len(tail.rstrip())
+        items.append((item, item_start, item_end))
+    return items
+
+
+def _browser_value_kind(command: str, key: str | None, value: str) -> str:
+    if key in {"selector", "target", "id"}:
+        return "browser_selector"
+    if key in {"url", "href", "src"} or URL_PATTERN.fullmatch(value):
+        return "url"
+    if _is_path(value):
+        return "path"
+    if key is None and command == "click":
+        return "browser_selector"
+    return "browser_text_value"
+
+
+def _parse_browser_invocation(text: str) -> BrowserInvocation | None:
+    match = BROWSER_CALL_PATTERN.match(text.strip())
+    if match is None:
+        return None
+    command = match.group(1)
+    if command not in BROWSER_VERBS:
+        return None
+    args_text = match.group(2)
+    if not args_text.strip():
+        return None
+    arguments: list[BrowserArgument] = []
+    items = _split_browser_arguments(args_text)
+    if len(items) == 1 and command in {"click", "type"}:
+        item_text, item_start, _item_end = items[0]
+        value_match = QUOTED_VALUE_PATTERN.match(item_text)
+        if value_match is not None:
+            value = value_match.group(2)
+            value_span = (match.start(2) + item_start + value_match.start(2), match.start(2) + item_start + value_match.end(2))
+            arguments.append(BrowserArgument(key=None, value=value, kind=_browser_value_kind(command, None, value), value_span=value_span))
+            return BrowserInvocation(command=command, command_span=match.span(1), arguments=arguments)
+    for item_text, item_start, _item_end in items:
+        arg_match = NAMED_BROWSER_ARG_PATTERN.match(item_text)
+        if arg_match is None:
+            return None
+        key = arg_match.group(1)
+        if key not in BROWSER_ARG_KEYS[command]:
+            return None
+        value = arg_match.group(3)
+        value_span = (match.start(2) + item_start + arg_match.start(3), match.start(2) + item_start + arg_match.end(3))
+        arguments.append(BrowserArgument(key=key, value=value, kind=_browser_value_kind(command, key, value), value_span=value_span))
+    if not arguments:
+        return None
+    return BrowserInvocation(command=command, command_span=match.span(1), arguments=arguments)
 
 
 def _shell_token_spans(line: str) -> list[tuple[str, tuple[int, int]]]:
@@ -380,49 +513,230 @@ def _shell_token_spans(line: str) -> list[tuple[str, tuple[int, int]]]:
     return spans
 
 
-def _inline_candidates(text: str, base_start: int, config: SegmentationConfig) -> list[InlineCandidate]:
-    candidates: list[InlineCandidate] = []
-    if config.enable_browser_dsl_segmentation:
-        for match in INLINE_BROWSER_PATTERN.finditer(text):
-            candidates.append(
-                InlineCandidate(
-                    kind="browser",
-                    char_span=(base_start + match.start(), base_start + match.end()),
-                    text=match.group(0),
-                    metadata={"segment_source": "heuristic", "evidence": "inline_browser"},
-                )
+def _parse_shell_command(text: str, allow_prompt: bool) -> list[ShellToken] | None:
+    working = text.strip()
+    offset = len(text) - len(working)
+    if PROMPT_PATTERN.match(working):
+        if not allow_prompt:
+            return None
+        prompt_match = PROMPT_PATTERN.match(working)
+        assert prompt_match is not None
+        offset += prompt_match.end()
+        working = working[prompt_match.end() :]
+    try:
+        shlex.split(working)
+    except ValueError:
+        return None
+    relative_tokens = _shell_token_spans(working)
+    if len(relative_tokens) < 2:
+        return None
+    head_token = relative_tokens[0][0].strip("\"'")
+    if head_token not in COMMON_SHELL_COMMANDS and not _is_path(head_token):
+        return None
+    saw_marker = False
+    plain_before_marker = 0
+    expects_flag_value = False
+    emitted: list[ShellToken] = []
+    command_span = (offset + relative_tokens[0][1][0], offset + relative_tokens[0][1][1])
+    emitted.append(ShellToken(kind="path" if _is_path(head_token) else "identifier", text=head_token, span=command_span, role="command"))
+    for token, token_span in relative_tokens[1:]:
+        absolute_span = (offset + token_span[0], offset + token_span[1])
+        stripped = token.strip("\"'")
+        if not stripped:
+            return None
+        if stripped[-1] in ".!?":
+            return None
+        if token.startswith("-"):
+            saw_marker = True
+            expects_flag_value = True
+            emitted.append(ShellToken(kind="shell_flag", text=stripped, span=absolute_span, role="flag"))
+            continue
+        if URL_PATTERN.fullmatch(stripped):
+            saw_marker = True
+            expects_flag_value = False
+            emitted.append(ShellToken(kind="url", text=stripped, span=absolute_span, role="value"))
+            continue
+        if _is_path(stripped):
+            saw_marker = True
+            expects_flag_value = False
+            emitted.append(ShellToken(kind="path", text=stripped, span=absolute_span, role="value"))
+            continue
+        if expects_flag_value:
+            expects_flag_value = False
+            emitted.append(ShellToken(kind="shell_value", text=stripped, span=absolute_span, role="value"))
+            continue
+        if not saw_marker:
+            plain_before_marker += 1
+            if plain_before_marker > 1:
+                return None
+            emitted.append(ShellToken(kind="shell_value", text=stripped, span=absolute_span, role="value"))
+            continue
+        if stripped.isupper() or any(char.isdigit() for char in stripped) or any(char in stripped for char in "/.:_=-"):
+            emitted.append(ShellToken(kind="shell_value", text=stripped, span=absolute_span, role="value"))
+            continue
+        return None
+    if not saw_marker:
+        return None
+    return emitted
+
+
+def _strip_decorators(text: str) -> tuple[str, int]:
+    offset = 0
+    length = len(text)
+    while offset < length and text[offset].isspace():
+        offset += 1
+    while offset < length:
+        if text.startswith("> ", offset):
+            offset += 2
+            while offset < length and text[offset].isspace():
+                offset += 1
+            continue
+        if offset + 1 < length and text[offset] in "-*+" and text[offset + 1].isspace():
+            offset += 2
+            while offset < length and text[offset].isspace():
+                offset += 1
+            continue
+        break
+    return text[offset:], offset
+
+
+def _last_label_word(prefix: str) -> str | None:
+    words = re.findall(r"[A-Za-z]+", prefix)
+    if not words:
+        return None
+    return words[-1].lower()
+
+
+def _is_snippet_intro_prefix(prefix: str) -> bool:
+    normalized = " ".join(prefix.strip().split())
+    if not normalized or len(normalized) > 40:
+        return False
+    if any(char in normalized for char in ".!?;`"):
+        return False
+    if len(normalized.split()) > 5:
+        return False
+    last_word = _last_label_word(normalized)
+    return last_word in SNIPPET_LABEL_WORDS
+
+
+def _is_shell_intro_prefix(prefix: str) -> bool:
+    last_word = _last_label_word(prefix)
+    return last_word in SHELL_LABEL_WORDS
+
+
+def _whole_line_candidate(line_text: str, line_start: int, line_end: int) -> LiteralCandidate | None:
+    bare_line = line_text.rstrip("\r\n")
+    content, offset = _strip_decorators(bare_line)
+    if not content.strip():
+        return None
+    stripped_text, stripped_span = _strip_span(content, (line_start + offset, line_start + len(bare_line)))
+    return LiteralCandidate(
+        text=stripped_text,
+        char_span=stripped_span,
+        cover_span=stripped_span,
+        evidence="standalone_line",
+        allow_shell=bool(PROMPT_PATTERN.match(stripped_text)),
+    )
+
+
+def _tail_candidate(line_text: str, line_start: int, line_end: int) -> LiteralCandidate | None:
+    bare_line = line_text.rstrip("\r\n")
+    content, offset = _strip_decorators(bare_line)
+    colon_index = content.find(":")
+    if colon_index <= 0:
+        return None
+    prefix = content[:colon_index]
+    if not _is_snippet_intro_prefix(prefix):
+        return None
+    tail = content[colon_index + 1 :]
+    stripped_text, stripped_span = _strip_span(tail, (line_start + offset + colon_index + 1, line_start + len(bare_line)))
+    if not stripped_text:
+        return None
+    return LiteralCandidate(
+        text=stripped_text,
+        char_span=stripped_span,
+        cover_span=stripped_span,
+        evidence="snippet_tail",
+        allow_shell=_is_shell_intro_prefix(prefix),
+    )
+
+
+def _literal_parent(
+    candidate: LiteralCandidate,
+    metadata: dict[str, Any],
+    config: SegmentationConfig,
+) -> ParentBlock | None:
+    if not candidate.text.strip():
+        return None
+    combined_metadata = {**metadata, "segment_source": "heuristic", "evidence": candidate.evidence}
+    order = ["json", "sql", "browser", "shell", "code"]
+    if candidate.hint in order:
+        order.remove(candidate.hint)
+        order.insert(0, candidate.hint)
+    for kind in order:
+        if kind == "json" and config.enable_json_leaf_segmentation and _looks_like_json(candidate.text):
+            return ParentBlock(kind="json", char_span=candidate.char_span, text=candidate.text, source="heuristic", metadata=combined_metadata)
+        if kind == "sql" and config.enable_sql_segmentation and is_sql_statement(candidate.text):
+            return ParentBlock(kind="sql", char_span=candidate.char_span, text=candidate.text, source="heuristic", metadata=combined_metadata)
+        if kind == "browser" and config.enable_browser_dsl_segmentation and _parse_browser_invocation(candidate.text):
+            return ParentBlock(kind="browser", char_span=candidate.char_span, text=candidate.text, source="heuristic", metadata=combined_metadata)
+        if kind == "shell" and config.enable_code_segmentation and candidate.allow_shell and _parse_shell_command(candidate.text, allow_prompt=True):
+            return ParentBlock(kind="shell", char_span=candidate.char_span, text=candidate.text, source="heuristic", metadata=combined_metadata)
+        if kind == "code" and config.enable_code_segmentation and _looks_like_code_line(candidate.text):
+            return ParentBlock(kind="code", char_span=candidate.char_span, text=candidate.text, source="heuristic", metadata=combined_metadata)
+    return None
+
+
+def _inline_code_candidates(text: str, span: tuple[int, int]) -> list[LiteralCandidate]:
+    candidates: list[LiteralCandidate] = []
+    for match in INLINE_CODE_PATTERN.finditer(text):
+        inner_span = (span[0] + match.start(1), span[0] + match.end(1))
+        candidates.append(
+            LiteralCandidate(
+                text=match.group(1),
+                char_span=inner_span,
+                cover_span=(span[0] + match.start(), span[0] + match.end()),
+                evidence="inline_code",
+                allow_shell=True,
             )
-    if config.enable_sql_segmentation:
-        for line, line_start, _line_end in _split_lines(text, base_start):
-            stripped = line.strip()
-            if not stripped:
-                continue
-            match = SQL_START_PATTERN.search(line)
-            if match is None:
-                continue
-            if match.start() == 0:
-                continue
-            sql_start = line_start + match.start()
-            sql_end = line_start + len(line.rstrip())
-            candidates.append(
-                InlineCandidate(
-                    kind="sql",
-                    char_span=(sql_start, sql_end),
-                    text=line[match.start() : len(line.rstrip())],
-                    metadata={"segment_source": "heuristic", "evidence": "inline_sql"},
-                )
-            )
+        )
     return candidates
 
 
-def _line_parent(kind: str, text: str, start: int, end: int, evidence: str) -> ParentBlock:
-    return ParentBlock(
-        kind=kind,
-        char_span=(start, end),
-        text=text,
-        source="heuristic",
-        metadata={"segment_source": "heuristic", "evidence": evidence},
-    )
+def _sql_candidate_from_lines(lines: list[tuple[str, int, int]], index: int) -> tuple[ParentBlock | None, int]:
+    line_text, line_start, line_end = lines[index]
+    for start_candidate in (_tail_candidate(line_text, line_start, line_end), _whole_line_candidate(line_text, line_start, line_end)):
+        if start_candidate is None:
+            continue
+        if sql_statement_head(start_candidate.text) is None:
+            continue
+        parts = [start_candidate.text]
+        end = start_candidate.char_span[1]
+        consumed = 1
+        cursor = index + 1
+        while cursor < len(lines):
+            next_text, next_start, next_end = lines[cursor]
+            stripped_text, stripped_span = _strip_span(next_text, (next_start, next_end))
+            if not stripped_text or not is_sql_continuation(stripped_text):
+                break
+            parts.append(stripped_text)
+            end = stripped_span[1]
+            consumed += 1
+            cursor += 1
+        combined = "\n".join(parts)
+        if not is_sql_statement(combined):
+            continue
+        return (
+            ParentBlock(
+                kind="sql",
+                char_span=(start_candidate.char_span[0], end),
+                text=combined,
+                source="heuristic",
+                metadata={"segment_source": "heuristic", "evidence": start_candidate.evidence},
+            ),
+            consumed,
+        )
+    return None, 0
 
 
 def _line_candidates(text: str, base_start: int, config: SegmentationConfig) -> list[ParentBlock]:
@@ -432,58 +746,20 @@ def _line_candidates(text: str, base_start: int, config: SegmentationConfig) -> 
     candidates: list[ParentBlock] = []
     index = 0
     while index < len(lines):
+        if config.enable_sql_segmentation:
+            sql_parent, consumed = _sql_candidate_from_lines(lines, index)
+            if sql_parent is not None:
+                candidates.append(sql_parent)
+                index += consumed
+                continue
         line_text, line_start, line_end = lines[index]
-        stripped = line_text.strip()
-        if not stripped:
-            index += 1
-            continue
-        if config.enable_json_leaf_segmentation and _looks_like_json(stripped):
-            trimmed_text, trimmed_span = _strip_span(line_text, (line_start, line_end))
-            candidates.append(_line_parent("json", trimmed_text, trimmed_span[0], trimmed_span[1], "json_line"))
-            index += 1
-            continue
-        if config.enable_browser_dsl_segmentation and BROWSER_LINE_PATTERN.match(stripped):
-            trimmed_text, trimmed_span = _strip_span(line_text, (line_start, line_end))
-            candidates.append(_line_parent("browser", trimmed_text, trimmed_span[0], trimmed_span[1], "browser_line"))
-            index += 1
-            continue
-        if config.enable_sql_segmentation and _looks_like_sql(stripped):
-            start = line_start
-            end = line_end
-            parts = [line_text]
-            index += 1
-            while index < len(lines):
-                next_line_text, _next_start, next_end = lines[index]
-                next_stripped = next_line_text.strip()
-                if not next_stripped or not _looks_like_sql_continuation(next_stripped):
-                    break
-                parts.append(next_line_text)
-                end = next_end
-                index += 1
-            combined_text, combined_span = _strip_span("".join(parts), (start, end))
-            candidates.append(_line_parent("sql", combined_text, combined_span[0], combined_span[1], "sql_line"))
-            continue
-        if config.enable_code_segmentation and _shell_line(stripped):
-            trimmed_text, trimmed_span = _strip_span(line_text, (line_start, line_end))
-            candidates.append(_line_parent("shell", trimmed_text, trimmed_span[0], trimmed_span[1], "shell_line"))
-            index += 1
-            continue
-        if config.enable_code_segmentation and _looks_like_code_line(stripped):
-            start = line_start
-            end = line_end
-            parts = [line_text]
-            index += 1
-            while index < len(lines):
-                next_line_text, _next_start, next_end = lines[index]
-                next_stripped = next_line_text.strip()
-                if not next_stripped or not _looks_like_code_line(next_stripped):
-                    break
-                parts.append(next_line_text)
-                end = next_end
-                index += 1
-            combined_text, combined_span = _strip_span("".join(parts), (start, end))
-            candidates.append(_line_parent("code", combined_text, combined_span[0], combined_span[1], "code_line"))
-            continue
+        for candidate in (_tail_candidate(line_text, line_start, line_end), _whole_line_candidate(line_text, line_start, line_end)):
+            if candidate is None:
+                continue
+            parent = _literal_parent(candidate, {}, config)
+            if parent is not None:
+                candidates.append(parent)
+                break
         index += 1
     return candidates
 
@@ -545,10 +821,7 @@ class _SegmentationPlanner:
             self.segment_react_action_input(node)
             return
         if node.kind == "react_action":
-            before = len(self.segments)
-            self.process_text_region(node.text, node.char_span, fallback_kind=None, allow_react=False, metadata=node.metadata)
-            if len(self.segments) == before:
-                self.append_segment("browser_action", node.text.strip(), node.char_span, dict(node.metadata))
+            self.process_text_region(node.text, node.char_span, fallback_kind="unknown_text", allow_react=False, metadata=node.metadata)
             return
         if node.emit_kind is not None:
             self.append_segment(node.emit_kind, node.text, node.char_span, dict(node.metadata))
@@ -641,20 +914,17 @@ class _SegmentationPlanner:
                     inner_text = self.raw_text[inner_span[0] : inner_span[1]]
                     if inner_text.strip():
                         language = match.group(1)
-                        self.process_node(
-                            ParentBlock(
-                                kind=_fenced_kind(language),
-                                char_span=inner_span,
-                                text=inner_text,
-                                source="heuristic",
-                                metadata={
-                                    **metadata,
-                                    "segment_source": "heuristic",
-                                    "evidence": "fenced_code",
-                                    "language": language.strip().lower(),
-                                },
-                            )
+                        candidate = LiteralCandidate(
+                            text=inner_text,
+                            char_span=inner_span,
+                            cover_span=inner_span,
+                            evidence="fenced_code",
+                            allow_shell=True,
+                            hint=_fenced_kind(language),
                         )
+                        parent = _literal_parent(candidate, {**metadata, "language": language.strip().lower()}, self.config)
+                        if parent is not None:
+                            self.process_node(parent)
                     cursor = fenced_span[1]
                 if cursor < span[1]:
                     self.process_text_region(
@@ -665,33 +935,25 @@ class _SegmentationPlanner:
                         metadata=metadata,
                     )
                 return
-        inline_candidates = _inline_candidates(text, span[0], self.config)
-        if inline_candidates:
+        inline_code = _inline_code_candidates(text, span)
+        if inline_code:
             cursor = span[0]
-            for candidate in sorted(inline_candidates, key=lambda item: (item.char_span[0], item.char_span[1])):
-                if cursor < candidate.char_span[0]:
+            for candidate in inline_code:
+                if cursor < candidate.cover_span[0]:
                     self.process_text_region(
-                        self.raw_text[cursor : candidate.char_span[0]],
-                        (cursor, candidate.char_span[0]),
+                        self.raw_text[cursor : candidate.cover_span[0]],
+                        (cursor, candidate.cover_span[0]),
                         fallback_kind=fallback_kind,
                         allow_react=False,
                         metadata=metadata,
                     )
-                if candidate.char_span[1] <= cursor:
-                    continue
-                self.process_node(
-                    ParentBlock(
-                        kind=candidate.kind,
-                        char_span=candidate.char_span,
-                        text=candidate.text,
-                        source="heuristic",
-                        metadata={**metadata, **candidate.metadata},
-                    )
-                )
-                cursor = candidate.char_span[1]
+                parent = _literal_parent(candidate, metadata, self.config)
+                if parent is not None:
+                    self.process_node(parent)
+                cursor = candidate.cover_span[1]
             if cursor < span[1]:
                 self.process_text_region(
-                    self.raw_text[cursor:span[1]],
+                    self.raw_text[cursor : span[1]],
                     (cursor, span[1]),
                     fallback_kind=fallback_kind,
                     allow_react=False,
@@ -710,7 +972,15 @@ class _SegmentationPlanner:
                         allow_react=False,
                         metadata=metadata,
                     )
-                self.process_node(candidate)
+                self.process_node(
+                    ParentBlock(
+                        kind=candidate.kind,
+                        char_span=candidate.char_span,
+                        text=candidate.text,
+                        source="heuristic",
+                        metadata={**metadata, **candidate.metadata},
+                    )
+                )
                 cursor = candidate.char_span[1]
             if cursor < span[1]:
                 self.process_text_region(
@@ -807,69 +1077,42 @@ class _SegmentationPlanner:
         return name_span, arguments_span
 
     def segment_browser_node(self, node: ParentBlock) -> None:
-        match = BROWSER_LINE_PATTERN.match(node.text.strip())
-        if match is None:
-            match = INLINE_BROWSER_PATTERN.search(node.text)
-        if match is None:
+        invocation = _parse_browser_invocation(node.text)
+        if invocation is None:
+            self.append_segment("unknown_text", node.text, node.char_span, dict(node.metadata))
             return
-        command = match.group(1)
-        args = match.group(2)
-        command_start = node.text.find(command)
-        if command_start < 0:
-            return
-        command_span = (node.char_span[0] + command_start, node.char_span[0] + command_start + len(command))
-        self.append_segment("browser_action", command, command_span, dict(node.metadata))
-        args_offset = node.text.find(args, command_start)
-        if args_offset < 0:
-            return
-        for arg_match in re.finditer(r"([a-zA-Z_][\w]*)\s*=\s*\"([^\"]+)\"", args):
-            key = arg_match.group(1)
-            value = arg_match.group(2)
-            value_span = (
-                node.char_span[0] + args_offset + arg_match.start(2),
-                node.char_span[0] + args_offset + arg_match.end(2),
-            )
-            if key in {"selector", "target", "id"}:
-                kind = "browser_selector"
-            elif key in {"url", "href", "src"} or URL_PATTERN.fullmatch(value):
-                kind = "url"
-            elif _is_path(value):
-                kind = "path"
-            else:
-                kind = "browser_text_value"
-            self.append_segment(kind, value, value_span, {**node.metadata, "argument": key})
+        command_span = (node.char_span[0] + invocation.command_span[0], node.char_span[0] + invocation.command_span[1])
+        self.append_segment("browser_action", invocation.command, command_span, dict(node.metadata))
+        for argument in invocation.arguments:
+            value_span = (node.char_span[0] + argument.value_span[0], node.char_span[0] + argument.value_span[1])
+            argument_metadata = dict(node.metadata)
+            if argument.key is not None:
+                argument_metadata["argument"] = argument.key
+            self.append_segment(argument.kind, argument.value, value_span, argument_metadata)
 
     def segment_sql_node(self, node: ParentBlock) -> None:
-        for clause_name, clause_text, start, end in split_sql_clauses(node.text):
+        clauses = split_sql_clauses(node.text)
+        if not clauses:
+            self.append_segment("unknown_text", node.text, node.char_span, dict(node.metadata))
+            return
+        for clause_name, clause_text, start, end in clauses:
             self.append_segment("sql_clause", clause_text, (node.char_span[0] + start, node.char_span[0] + end), {**node.metadata, "clause": clause_name})
 
     def segment_code_node(self, node: ParentBlock) -> None:
+        emitted = False
         for line, start, end in split_code_statements(node.text):
             self.append_segment("code_statement", line, (node.char_span[0] + start, node.char_span[0] + end), dict(node.metadata))
+            emitted = True
+        if not emitted:
+            self.append_segment("unknown_text", node.text, node.char_span, dict(node.metadata))
 
     def segment_shell_node(self, node: ParentBlock) -> None:
-        for line, start, _end in split_code_statements(node.text):
-            relative_tokens = _shell_token_spans(line)
-            if not relative_tokens:
-                continue
-            token, span = relative_tokens[0]
-            kind = "path" if _is_path(token) else "identifier"
-            self.append_segment(kind, token, (node.char_span[0] + start + span[0], node.char_span[0] + start + span[1]), {**node.metadata, "shell_role": "command"})
-            pending_flag: tuple[int, int] | None = None
-            for token, token_span in relative_tokens[1:]:
-                absolute_span = (node.char_span[0] + start + token_span[0], node.char_span[0] + start + token_span[1])
-                stripped = token.strip("\"'")
-                if token.startswith("-"):
-                    self.append_segment("shell_flag", stripped, absolute_span, {**node.metadata, "shell_role": "flag"})
-                    pending_flag = absolute_span
-                    continue
-                if URL_PATTERN.fullmatch(stripped):
-                    self.append_segment("url", stripped, absolute_span, {**node.metadata, "shell_role": "value"})
-                elif _is_path(stripped):
-                    self.append_segment("path", stripped, absolute_span, {**node.metadata, "shell_role": "value"})
-                else:
-                    self.append_segment("shell_value", stripped, absolute_span, {**node.metadata, "shell_role": "value"})
-                pending_flag = None
+        tokens = _parse_shell_command(node.text, allow_prompt=True)
+        if tokens is None:
+            self.append_segment("unknown_text", node.text, node.char_span, dict(node.metadata))
+            return
+        for token in tokens:
+            self.append_segment(token.kind, token.text, (node.char_span[0] + token.span[0], node.char_span[0] + token.span[1]), {**node.metadata, "shell_role": token.role})
 
     def segment_react_action_input(self, node: ParentBlock) -> None:
         self.append_segment("tool_arguments_raw", node.text, node.char_span, dict(node.metadata))
