@@ -24,28 +24,42 @@ from agentuq import Analyzer, UQConfig
 from agentuq.adapters.gemini import GeminiAdapter
 
 client = genai.Client()
-request_meta = {
-    "model": "gemini-2.5-flash",
-    "responseLogprobs": True,
-    "logprobs": 5,
-    "temperature": 0.0,
-    "topP": 1.0,
-}
 response = client.models.generate_content(
-    model=request_meta["model"],
+    model="gemini-2.5-flash",
     contents="Return JSON for the weather in Paris.",
     config={
-        "responseLogprobs": request_meta["responseLogprobs"],
-        "logprobs": request_meta["logprobs"],
-        "temperature": request_meta["temperature"],
-        "topP": request_meta["topP"],
+        "responseLogprobs": True,
+        "logprobs": 5,
+        "temperature": 0.0,
+        "topP": 1.0,
     },
 )
 
 adapter = GeminiAdapter()
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="balanced"))
-record = adapter.capture(response, request_meta)
-result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
+record = adapter.capture(
+    response,
+    {
+        "model": "gemini-2.5-flash",
+        "responseLogprobs": True,
+        "logprobs": 5,
+        "temperature": 0.0,
+        "topP": 1.0,
+    },
+)
+result = analyzer.analyze_step(
+    record,
+    adapter.capability_report(
+        response,
+        {
+            "model": "gemini-2.5-flash",
+            "responseLogprobs": True,
+            "logprobs": 5,
+            "temperature": 0.0,
+            "topP": 1.0,
+        },
+    ),
+)
 print(result.pretty())
 ```
 

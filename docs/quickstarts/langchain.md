@@ -64,5 +64,5 @@ Segments
 ## Troubleshooting
 
 - Bind logprob params on the model before wrapping it. Explicit `config={"metadata": ...}` still overrides inferred values when you need to force a specific request surface.
-- If your provider adapter stores token metadata elsewhere, pass a custom `request_meta` map and normalize before analysis.
+- If your provider adapter stores token metadata elsewhere, pass a custom inline metadata dict and normalize before analysis.
 - LangChain live checks are optional local smoke tests only.

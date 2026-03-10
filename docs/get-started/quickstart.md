@@ -18,26 +18,40 @@ from agentuq import Action, Analyzer, UQConfig
 from agentuq.adapters.openai_responses import OpenAIResponsesAdapter
 
 client = OpenAI()
-request_meta = {
-    "model": "gpt-4.1-mini",
-    "include": ["message.output_text.logprobs"],
-    "top_logprobs": 5,
-    "temperature": 0.0,
-    "top_p": 1.0,
-}
 response = client.responses.create(
-    model=request_meta["model"],
+    model="gpt-4.1-mini",
     input="Return a SQL query for active users created in the last 7 days.",
-    include=request_meta["include"],
-    top_logprobs=request_meta["top_logprobs"],
-    temperature=request_meta["temperature"],
-    top_p=request_meta["top_p"],
+    include=["message.output_text.logprobs"],
+    top_logprobs=5,
+    temperature=0.0,
+    top_p=1.0,
 )
 
 adapter = OpenAIResponsesAdapter()
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
-record = adapter.capture(response, request_meta)
-result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
+record = adapter.capture(
+    response,
+    {
+        "model": "gpt-4.1-mini",
+        "include": ["message.output_text.logprobs"],
+        "top_logprobs": 5,
+        "temperature": 0.0,
+        "top_p": 1.0,
+    },
+)
+result = analyzer.analyze_step(
+    record,
+    adapter.capability_report(
+        response,
+        {
+            "model": "gpt-4.1-mini",
+            "include": ["message.output_text.logprobs"],
+            "top_logprobs": 5,
+            "temperature": 0.0,
+            "top_p": 1.0,
+        },
+    ),
+)
 decision = result.decision
 
 print(result.pretty())
@@ -86,4 +100,3 @@ Plain-text output is the canonical rendering contract. Rich output is optional.
 - [Reading results](../concepts/reading_results.md) for metric interpretation and threshold semantics
 - [Policies](../concepts/policies.md) and [Tolerance](../concepts/tolerance.md) for tuning
 - [OpenAI Quickstart](../quickstarts/openai.md) if you want the full provider-specific path
-

@@ -26,26 +26,40 @@ from agentuq import Analyzer, UQConfig
 from agentuq.adapters.openai_responses import OpenAIResponsesAdapter
 
 client = OpenAI()
-request_meta = {
-    "model": "gpt-4.1-mini",
-    "include": ["message.output_text.logprobs"],
-    "top_logprobs": 5,
-    "temperature": 0.0,
-    "top_p": 1.0,
-}
 response = client.responses.create(
-    model=request_meta["model"],
+    model="gpt-4.1-mini",
     input="Return the single word Paris.",
-    include=request_meta["include"],
-    top_logprobs=request_meta["top_logprobs"],
-    temperature=request_meta["temperature"],
-    top_p=request_meta["top_p"],
+    include=["message.output_text.logprobs"],
+    top_logprobs=5,
+    temperature=0.0,
+    top_p=1.0,
 )
 
 adapter = OpenAIResponsesAdapter()
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
-record = adapter.capture(response, request_meta)
-result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
+record = adapter.capture(
+    response,
+    {
+        "model": "gpt-4.1-mini",
+        "include": ["message.output_text.logprobs"],
+        "top_logprobs": 5,
+        "temperature": 0.0,
+        "top_p": 1.0,
+    },
+)
+result = analyzer.analyze_step(
+    record,
+    adapter.capability_report(
+        response,
+        {
+            "model": "gpt-4.1-mini",
+            "include": ["message.output_text.logprobs"],
+            "top_logprobs": 5,
+            "temperature": 0.0,
+            "top_p": 1.0,
+        },
+    ),
+)
 print(result.pretty())
 ```
 

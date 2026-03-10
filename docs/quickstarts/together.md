@@ -24,24 +24,37 @@ from agentuq import Analyzer, UQConfig
 from agentuq.adapters.together import TogetherAdapter
 
 client = Together(api_key="...")
-request_meta = {
-    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-    "logprobs": 5,
-    "temperature": 0.0,
-    "top_p": 1.0,
-}
 response = client.chat.completions.create(
-    model=request_meta["model"],
+    model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
     messages=[{"role": "user", "content": "Return a browser command to click submit."}],
-    logprobs=request_meta["logprobs"],
-    temperature=request_meta["temperature"],
-    top_p=request_meta["top_p"],
+    logprobs=5,
+    temperature=0.0,
+    top_p=1.0,
 )
 
 adapter = TogetherAdapter()
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
-record = adapter.capture(response, request_meta)
-result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
+record = adapter.capture(
+    response,
+    {
+        "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        "logprobs": 5,
+        "temperature": 0.0,
+        "top_p": 1.0,
+    },
+)
+result = analyzer.analyze_step(
+    record,
+    adapter.capability_report(
+        response,
+        {
+            "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            "logprobs": 5,
+            "temperature": 0.0,
+            "top_p": 1.0,
+        },
+    ),
+)
 print(result.pretty())
 ```
 

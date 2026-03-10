@@ -24,28 +24,43 @@ from agentuq import Analyzer, UQConfig
 from agentuq.adapters.openrouter import OpenRouterAdapter
 
 client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key="...")
-request_meta = {
-    "model": "openai/gpt-4o-mini",
-    "logprobs": True,
-    "top_logprobs": 5,
-    "provider": {"require_parameters": True},
-    "temperature": 0.0,
-    "top_p": 1.0,
-}
 response = client.chat.completions.create(
-    model=request_meta["model"],
+    model="openai/gpt-4o-mini",
     messages=[{"role": "user", "content": "Return the single word Paris."}],
-    logprobs=request_meta["logprobs"],
-    top_logprobs=request_meta["top_logprobs"],
-    provider=request_meta["provider"],
-    temperature=request_meta["temperature"],
-    top_p=request_meta["top_p"],
+    logprobs=True,
+    top_logprobs=5,
+    provider={"require_parameters": True},
+    temperature=0.0,
+    top_p=1.0,
 )
 
 adapter = OpenRouterAdapter()
 analyzer = Analyzer(UQConfig(policy="conservative", tolerance="strict"))
-record = adapter.capture(response, request_meta)
-result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
+record = adapter.capture(
+    response,
+    {
+        "model": "openai/gpt-4o-mini",
+        "logprobs": True,
+        "top_logprobs": 5,
+        "provider": {"require_parameters": True},
+        "temperature": 0.0,
+        "top_p": 1.0,
+    },
+)
+result = analyzer.analyze_step(
+    record,
+    adapter.capability_report(
+        response,
+        {
+            "model": "openai/gpt-4o-mini",
+            "logprobs": True,
+            "top_logprobs": 5,
+            "provider": {"require_parameters": True},
+            "temperature": 0.0,
+            "top_p": 1.0,
+        },
+    ),
+)
 print(result.pretty())
 ```
 

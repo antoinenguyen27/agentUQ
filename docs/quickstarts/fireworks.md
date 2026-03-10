@@ -24,26 +24,40 @@ from agentuq import Analyzer, UQConfig
 from agentuq.adapters.fireworks import FireworksAdapter
 
 client = OpenAI(base_url="https://api.fireworks.ai/inference/v1", api_key="...")
-request_meta = {
-    "model": "accounts/fireworks/models/llama-v3p1-8b-instruct",
-    "logprobs": True,
-    "top_logprobs": 5,
-    "temperature": 0.0,
-    "top_p": 1.0,
-}
 response = client.chat.completions.create(
-    model=request_meta["model"],
+    model="accounts/fireworks/models/llama-v3p1-8b-instruct",
     messages=[{"role": "user", "content": "Return a SQL query for active users."}],
-    logprobs=request_meta["logprobs"],
-    top_logprobs=request_meta["top_logprobs"],
-    temperature=request_meta["temperature"],
-    top_p=request_meta["top_p"],
+    logprobs=True,
+    top_logprobs=5,
+    temperature=0.0,
+    top_p=1.0,
 )
 
 adapter = FireworksAdapter()
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
-record = adapter.capture(response, request_meta)
-result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
+record = adapter.capture(
+    response,
+    {
+        "model": "accounts/fireworks/models/llama-v3p1-8b-instruct",
+        "logprobs": True,
+        "top_logprobs": 5,
+        "temperature": 0.0,
+        "top_p": 1.0,
+    },
+)
+result = analyzer.analyze_step(
+    record,
+    adapter.capability_report(
+        response,
+        {
+            "model": "accounts/fireworks/models/llama-v3p1-8b-instruct",
+            "logprobs": True,
+            "top_logprobs": 5,
+            "temperature": 0.0,
+            "top_p": 1.0,
+        },
+    ),
+)
 print(result.pretty())
 ```
 

@@ -32,17 +32,30 @@ agent = Agent(
 )
 run_result = Runner.run_sync(agent, "Return the single word Paris.")
 
-request_meta = {
-    "response_include": settings["response_include"],
-    "top_logprobs": settings["top_logprobs"],
-    "temperature": 0.0,
-    "top_p": 1.0,
-}
 adapter = OpenAIAgentsAdapter()
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
 response = latest_raw_response(run_result)
-record = adapter.capture(response, request_meta)
-result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
+record = adapter.capture(
+    response,
+    {
+        "response_include": settings["response_include"],
+        "top_logprobs": settings["top_logprobs"],
+        "temperature": 0.0,
+        "top_p": 1.0,
+    },
+)
+result = analyzer.analyze_step(
+    record,
+    adapter.capability_report(
+        response,
+        {
+            "response_include": settings["response_include"],
+            "top_logprobs": settings["top_logprobs"],
+            "temperature": 0.0,
+            "top_p": 1.0,
+        },
+    ),
+)
 print(result.pretty())
 ```
 

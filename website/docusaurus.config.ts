@@ -120,6 +120,10 @@ const config: Config = {
               href: 'https://github.com/antoinenguyen27/agentUQ',
             },
             {
+              label: 'MIT License',
+              href: 'https://github.com/antoinenguyen27/agentUQ/blob/main/LICENSE.txt',
+            },
+            {
               label: 'Maintainers',
               to: '/maintainers',
             },
@@ -130,7 +134,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright ${new Date().getFullYear()} AgentUQ OSS Contributors.`,
+      copyright: `Copyright ${new Date().getFullYear()} AgentUQ OSS Contributors. Released under the MIT License.`,
     },
     prism: {
       theme: prismThemes.github,

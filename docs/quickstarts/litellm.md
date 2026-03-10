@@ -23,28 +23,43 @@ from litellm import completion
 from agentuq import Analyzer, UQConfig
 from agentuq.adapters.litellm import LiteLLMAdapter
 
-request_meta = {
-    "model": "openai/gpt-4o-mini",
-    "logprobs": True,
-    "top_logprobs": 5,
-    "drop_params": False,
-    "temperature": 0.0,
-    "top_p": 1.0,
-}
 response = completion(
-    model=request_meta["model"],
+    model="openai/gpt-4o-mini",
     messages=[{"role": "user", "content": "Return JSON for the weather in Paris."}],
-    logprobs=request_meta["logprobs"],
-    top_logprobs=request_meta["top_logprobs"],
-    drop_params=request_meta["drop_params"],
-    temperature=request_meta["temperature"],
-    top_p=request_meta["top_p"],
+    logprobs=True,
+    top_logprobs=5,
+    drop_params=False,
+    temperature=0.0,
+    top_p=1.0,
 )
 
 adapter = LiteLLMAdapter()
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
-record = adapter.capture(response, request_meta)
-result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
+record = adapter.capture(
+    response,
+    {
+        "model": "openai/gpt-4o-mini",
+        "logprobs": True,
+        "top_logprobs": 5,
+        "drop_params": False,
+        "temperature": 0.0,
+        "top_p": 1.0,
+    },
+)
+result = analyzer.analyze_step(
+    record,
+    adapter.capability_report(
+        response,
+        {
+            "model": "openai/gpt-4o-mini",
+            "logprobs": True,
+            "top_logprobs": 5,
+            "drop_params": False,
+            "temperature": 0.0,
+            "top_p": 1.0,
+        },
+    ),
+)
 print(result.pretty())
 ```
 
@@ -69,5 +84,5 @@ Segments
 ## Troubleshooting
 
 - Prefer `drop_params=False` in UQ-critical paths.
-- If you can collect `supported_openai_params`, pass them into `request_meta` so capability reporting is explicit.
+- If you can collect `supported_openai_params`, include them in the inline metadata you pass to `capture()` and `capability_report()` so capability reporting is explicit.
 - Use this path for optional local live smoke tests only; it is not part of the required offline suite.

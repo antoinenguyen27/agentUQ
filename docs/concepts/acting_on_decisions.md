@@ -177,8 +177,17 @@ Use AgentUQ immediately after the model response and before any side effect:
 
 ```python
 response = client.responses.create(...)
-record = adapter.capture(response, request_meta)
-result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
+record = adapter.capture(
+    response,
+    {"include": ["message.output_text.logprobs"], "top_logprobs": 5, "temperature": 0.0, "top_p": 1.0},
+)
+result = analyzer.analyze_step(
+    record,
+    adapter.capability_report(
+        response,
+        {"include": ["message.output_text.logprobs"], "top_logprobs": 5, "temperature": 0.0, "top_p": 1.0},
+    ),
+)
 
 if result.decision.action == Action.DRY_RUN_VERIFY:
     explain_sql_before_running(result)
