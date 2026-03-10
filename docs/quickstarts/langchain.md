@@ -12,17 +12,16 @@ pip install -e .[dev]
 ## Minimal request with readable terminal output
 
 ```python
+from agentuq import UQConfig, UQResult
+from agentuq.integrations.langchain_middleware import UQMiddleware
 from langchain_openai import ChatOpenAI
-from uq_runtime.integrations.langchain_middleware import UQMiddleware
-from uq_runtime.schemas.config import UQConfig
-from uq_runtime.schemas.results import UQResult
 
 config = UQConfig(policy="balanced", tolerance="strict")
 model = ChatOpenAI(model="gpt-4o-mini", temperature=0.0).bind(logprobs=True, top_logprobs=5)
 wrapped = UQMiddleware(model, config)
 response = wrapped.invoke(
     "Return the single word Paris.",
-    config={"metadata": {"top_p": 1.0, "deterministic": True}},
+    config={"metadata": {"top_p": 1.0}},
 )
 result = UQResult.model_validate(response.response_metadata["uq_result"])
 print(result.pretty())
@@ -32,6 +31,7 @@ print(result.pretty())
 
 - AgentUQ expects token logprobs to appear under `response.response_metadata["logprobs"]` or provider-equivalent metadata.
 - `UQMiddleware` infers request metadata from bound LangChain/OpenAI model settings when you do not pass `config.metadata`.
+- For canonical mode, AgentUQ only needs the strict greedy settings to be visible in the captured metadata. You do not need a synthetic `deterministic` flag.
 - For tool calling, AgentUQ prefers LangChain's standardized `response.tool_calls` field and falls back to provider-specific `additional_kwargs`.
 - On OpenAI-compatible LangChain models, tool calls are structural metadata; AgentUQ will not infer token-grounded `tool_name` or `tool_argument_leaf` spans unless the provider actually returns grounded spans.
 - Attach the resulting `uq_result` to traces or downstream state if the step can trigger tools.

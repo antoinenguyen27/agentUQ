@@ -13,9 +13,8 @@ pip install -e .[dev]
 
 ```python
 from openai import OpenAI
-from uq_runtime.adapters.fireworks import FireworksAdapter
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
+from agentuq import Analyzer, UQConfig
+from agentuq.adapters.fireworks import FireworksAdapter
 
 client = OpenAI(base_url="https://api.fireworks.ai/inference/v1", api_key="...")
 request_meta = {
@@ -24,7 +23,6 @@ request_meta = {
     "top_logprobs": 5,
     "temperature": 0.0,
     "top_p": 1.0,
-    "deterministic": True,
 }
 response = client.chat.completions.create(
     model=request_meta["model"],

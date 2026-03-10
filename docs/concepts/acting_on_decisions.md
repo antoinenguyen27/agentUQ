@@ -23,9 +23,7 @@ The overall action is the highest-severity action selected across segments. The 
 ## Minimal loop
 
 ```python
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
-from uq_runtime.schemas.results import Action
+from agentuq import Action, Analyzer, UQConfig
 
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
 result = analyzer.analyze_step(record, capability_report)
@@ -189,14 +187,14 @@ if result.decision.action in {Action.RETRY_STEP, Action.RETRY_STEP_WITH_CONSTRAI
 
 ### LangGraph / LangChain
 
-Attach `uq_result` to state or response metadata right after the model node. Then gate before tool execution.
+Attach `uq_result` to state or response metadata right after the model node. Then gate the step before any tool execution or external side effect.
 
 The built-in helpers currently cover one narrow but important path:
 
 - `enrich_graph_state(...)` stores the result
-- `should_interrupt_before_tool(...)` returns `True` for tool-facing actions that should stop execution
+- `should_interrupt_before_tool(...)` returns `True` for grounded tool-facing actions that should stop execution
 
-If you need broader behavior than a boolean interrupt, read the stored `UQResult` from state and branch on `result.decision.action` directly.
+Most OpenAI-compatible tool flows expose structural tool calls rather than grounded tool spans. If you need broader behavior than a boolean interrupt, read the stored `UQResult` from state and branch on `result.decision.action` directly.
 
 ## How to inspect the risky span
 

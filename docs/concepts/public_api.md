@@ -1,6 +1,8 @@
 # Public API
 
-AgentUQ is intentionally small at the public surface.
+AgentUQ's public Python API is rooted at `agentuq`.
+
+Use `AgentUQ` in prose and `agentuq` in code. Adapters and integrations live under `agentuq.adapters...` and `agentuq.integrations...`.
 
 Most users only need four pieces:
 
@@ -15,6 +17,7 @@ From the package root:
 
 - `Analyzer`
 - `UQConfig`
+- `Action`
 - `UQResult`
 - `Decision`
 - `CapabilityReport`
@@ -22,23 +25,23 @@ From the package root:
 - `render_result`, `render_result_rich`, `print_result_rich`
 - `resolve_thresholds`
 
-These are the public entry points re-exported from `uq_runtime`.
+These are the stable public entry points re-exported from `agentuq`.
 
-Provider-specific adapters and some enums live in submodules.
+Provider-specific adapters and integration helpers live in submodules.
 
 Common examples:
 
-- `uq_runtime.adapters.openai_responses.OpenAIResponsesAdapter`
-- `uq_runtime.adapters.openai_chat.OpenAIChatAdapter`
-- `uq_runtime.schemas.results.Action`
+- `agentuq.adapters.openai_responses.OpenAIResponsesAdapter`
+- `agentuq.adapters.openai_chat.OpenAIChatAdapter`
+- `agentuq.integrations.langchain_middleware.UQMiddleware`
 
 ## Core flow
 
 The main workflow is:
 
 ```python
-from uq_runtime import Analyzer, UQConfig
-from uq_runtime.adapters.openai_responses import OpenAIResponsesAdapter
+from agentuq import Analyzer, UQConfig
+from agentuq.adapters.openai_responses import OpenAIResponsesAdapter
 
 adapter = OpenAIResponsesAdapter()
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
@@ -82,7 +85,7 @@ Key contents:
 - selected tokens and selected-token logprobs
 - top-k logprobs when available
 - structured blocks such as output text or tool-call metadata
-- request metadata such as temperature, top-p, and deterministic hints
+- request metadata such as temperature, top-p, and other decoding hints
 
 Most users do not construct this manually. Adapters do it for you.
 
@@ -138,7 +141,7 @@ Action enum used by `Decision.action`, `Decision.segment_actions`, and `segment.
 Import path:
 
 ```python
-from uq_runtime.schemas.results import Action
+from agentuq import Action
 ```
 
 ## Rendering helpers

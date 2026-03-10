@@ -15,9 +15,8 @@ Responses API:
 
 ```python
 from openai import OpenAI
-from uq_runtime.adapters.openai_responses import OpenAIResponsesAdapter
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
+from agentuq import Analyzer, UQConfig
+from agentuq.adapters.openai_responses import OpenAIResponsesAdapter
 
 client = OpenAI()
 request_meta = {
@@ -47,14 +46,14 @@ print(result.pretty())
 
 Use `OpenAIResponsesAdapter` or `OpenAIChatAdapter`, then pass the normalized record into `Analyzer`.
 
-For canonical mode, keep the request strictly greedy: `temperature=0`, `top_p=1`, and deterministic metadata in the capture request meta. If any of that is missing, AgentUQ will analyze the step in realized mode instead.
+For canonical mode, keep the request strictly greedy: `temperature=0` and `top_p=1` must be visible in the captured request metadata. If AgentUQ cannot establish that, it will analyze the step in realized mode instead.
 
 For a fuller diagnostic view, use `result.pretty(verbosity="debug", show_thresholds="all")`.
 
 ## Act on the result
 
 ```python
-from uq_runtime.schemas.results import Action
+from agentuq import Action
 
 decision = result.decision
 

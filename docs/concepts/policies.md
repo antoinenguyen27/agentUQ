@@ -54,7 +54,7 @@ Reach for configuration in this order:
 ## Custom rule example
 
 ```python
-from uq_runtime.schemas.config import UQConfig
+from agentuq import UQConfig
 
 config = UQConfig(
     policy="balanced",

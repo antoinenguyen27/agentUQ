@@ -13,9 +13,8 @@ pip install -e .[dev]
 
 ```python
 from litellm import completion
-from uq_runtime.adapters.litellm import LiteLLMAdapter
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
+from agentuq import Analyzer, UQConfig
+from agentuq.adapters.litellm import LiteLLMAdapter
 
 request_meta = {
     "model": "openai/gpt-4o-mini",
@@ -24,7 +23,6 @@ request_meta = {
     "drop_params": False,
     "temperature": 0.0,
     "top_p": 1.0,
-    "deterministic": True,
 }
 response = completion(
     model=request_meta["model"],

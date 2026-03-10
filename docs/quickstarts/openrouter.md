@@ -13,9 +13,8 @@ pip install -e .[dev]
 
 ```python
 from openai import OpenAI
-from uq_runtime.adapters.openrouter import OpenRouterAdapter
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
+from agentuq import Analyzer, UQConfig
+from agentuq.adapters.openrouter import OpenRouterAdapter
 
 client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key="...")
 request_meta = {

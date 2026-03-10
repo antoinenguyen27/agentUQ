@@ -14,7 +14,7 @@ For symptom-based tuning guidance, see [Tolerance](tolerance.md) and [Policies](
 
 ## Canonical mode requested on sampled runs
 
-AgentUQ downgrades to realized mode with `TEMPERATURE_MISMATCH` when degraded mode is allowed, or raises `UnsupportedForCanonicalModeError` when fail-loud behavior is configured. Use explicit greedy settings: `temperature=0`, `top_p=1`, and deterministic metadata.
+AgentUQ downgrades to realized mode with `TEMPERATURE_MISMATCH` when degraded mode is allowed, or raises `UnsupportedForCanonicalModeError` when fail-loud behavior is configured. Use explicit greedy settings: `temperature=0` and `top_p=1`, and make sure those settings are visible in the captured request metadata.
 
 ## OpenRouter accepted the request but routed to a backend without logprob support
 
@@ -37,7 +37,7 @@ Live tests are opt-in. Set `AGENTUQ_RUN_LIVE=1` and provide the relevant provide
 ## How to force fail-loud mode
 
 ```python
-from uq_runtime.schemas.config import UQConfig
+from agentuq import UQConfig
 
 config = UQConfig(
     capability={

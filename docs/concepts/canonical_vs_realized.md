@@ -12,9 +12,9 @@ Recommended conditions:
 
 - `temperature == 0`
 - `top_p == 1`
-- step metadata marks the call as deterministic
+- request/capture metadata keeps those greedy settings visible at analysis time
 
-Current implementation will also auto-select canonical mode when strict greedy parameters are present and deterministic metadata is absent. The recorded `Diagnostics.mode_reason` distinguishes explicit metadata from parameter inference even though the default human-readable rendering keeps the summary focused on action-driving output.
+If AgentUQ cannot establish those strict greedy settings from the captured metadata, `auto` mode will use realized mode instead.
 
 ## Realized mode
 

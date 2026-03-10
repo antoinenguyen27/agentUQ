@@ -13,9 +13,8 @@ pip install -e .[dev]
 
 ```python
 from google import genai
-from uq_runtime.adapters.gemini import GeminiAdapter
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
+from agentuq import Analyzer, UQConfig
+from agentuq.adapters.gemini import GeminiAdapter
 
 client = genai.Client()
 request_meta = {
@@ -24,7 +23,6 @@ request_meta = {
     "logprobs": 5,
     "temperature": 0.0,
     "topP": 1.0,
-    "deterministic": True,
 }
 response = client.models.generate_content(
     model=request_meta["model"],

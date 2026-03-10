@@ -1,10 +1,82 @@
 # AgentUQ
 
-Single-pass runtime reliability instrumentation for LLM agents using token logprobs.
+Single-pass runtime reliability gate for LLM agents using token logprobs.
 
-AgentUQ does not claim to know whether an output is true. It turns token logprobs into localized runtime signals that can change agent behavior: retry, regenerate a risky span, dry-run verify an action, block execution, or ask for user confirmation.
+AgentUQ turns provider-native token logprobs into localized runtime decisions for agent steps. It does not claim to know whether an output is true. It tells you where a generation looked brittle or ambiguous and whether the workflow should continue, annotate the trace, regenerate a risky span, retry the step, dry-run verify, ask for confirmation, or block execution.
 
-It sits above having no gate or guardrails at all, and below slower, more expensive layers such as LLM-as-a-judge, retrieval-backed verification, sandbox execution, or human review. The goal is to give agent developers a cheap first-pass gate that is grounded in the model's own probability signal and fast and light enough to run on every step.
+It sits above having no gate or guardrails at all, and below slower, more expensive layers such as retrieval-backed verification, sandbox execution, LLM-as-a-judge, or human review. The goal is to give agent developers a cheap first-pass reliability layer that is honest about what logprobs can and cannot say, and light enough to run on every step.
+
+## Why teams use it
+
+- Catch brittle action-bearing spans before execution: SQL clauses, tool arguments, selectors, URLs, paths, shell flags, and JSON leaves
+- Localize risk to the exact span that matters instead of treating the whole response as one opaque score
+- Spend expensive verification selectively by using AgentUQ as the first-pass gate
+
+## Install
+
+```bash
+python -m venv .venv
+. .venv/bin/activate
+pip install -e .[dev]
+```
+
+Examples below assume the public package and import namespace `agentuq`.
+
+## 30-second quickstart
+
+Use the OpenAI Responses API for new agentic integrations.
+
+```python
+from openai import OpenAI
+
+from agentuq import Action, Analyzer, UQConfig
+from agentuq.adapters.openai_responses import OpenAIResponsesAdapter
+
+client = OpenAI()
+request_meta = {
+    "model": "gpt-4.1-mini",
+    "include": ["message.output_text.logprobs"],
+    "top_logprobs": 5,
+    "temperature": 0.0,
+    "top_p": 1.0,
+}
+response = client.responses.create(
+    model=request_meta["model"],
+    input="Return a SQL query for active users created in the last 7 days.",
+    include=request_meta["include"],
+    top_logprobs=request_meta["top_logprobs"],
+    temperature=request_meta["temperature"],
+    top_p=request_meta["top_p"],
+)
+
+adapter = OpenAIResponsesAdapter()
+analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))
+record = adapter.capture(response, request_meta)
+result = analyzer.analyze_step(record, adapter.capability_report(response, request_meta))
+decision = result.decision
+
+print(result.pretty())
+
+if decision.action == Action.DRY_RUN_VERIFY:
+    run_explain_before_execution(result)
+elif decision.action in {Action.ASK_USER_CONFIRMATION, Action.BLOCK_EXECUTION}:
+    stop_before_side_effect(result)
+else:
+    continue_workflow(response)
+```
+
+That is the core loop: capture the response, analyze it, then route the workflow based on `result.decision.action`.
+
+## What decisions it can trigger
+
+- `continue`: proceed normally
+- `continue_with_annotation`: proceed, but attach the result to logs, traces, or monitoring
+- `regenerate_segment`: repair only the risky leaf or clause when your framework supports structured retry
+- `retry_step` / `retry_step_with_constraints`: rerun the model step with tighter instructions or narrower decoding
+- `dry_run_verify`: run a safe validator before execution
+- `ask_user_confirmation` / `block_execution`: stop before a side effect
+
+See [Acting on decisions](docs/concepts/acting_on_decisions.md) for concrete integration patterns.
 
 ## What it is for
 
@@ -18,11 +90,21 @@ It sits above having no gate or guardrails at all, and below slower, more expens
 - A correctness oracle
 - A replacement for retrieval, verification, or human review
 
+## Why this is still valuable when models can be confidently wrong
+
+Confident hallucinations are real. AgentUQ is valuable because it is a runtime gate, not because it is a truth oracle.
+
+- It is good at detecting brittle local generation, ambiguous action-bearing spans, and low-confidence stretches that are worth annotating, regenerating, or verifying.
+- It is especially useful on structured outputs, tool arguments, SQL, browser actions, shell commands, and other executed text where local token uncertainty is operationally meaningful.
+- It does not replace retrieval, semantic verification, sandboxing, or human review for high-probability factual errors or internally consistent confabulations.
+
+That is the right mental model: AgentUQ is the cheap first-pass gate that decides when a slower verifier should be invoked.
+
 ## Canonical vs realized
 
-- Canonical mode uses `G-NLL` and is only valid when the run is explicitly known to be greedy: `temperature=0`, `top_p=1`, and deterministic metadata. This is the flagship scoring object revisited by [Aichberger et al. 2026](https://arxiv.org/abs/2412.15176v2) for uncertainty estimation in LLMs.
+- Canonical mode uses `G-NLL` and is only valid when the step is known to be strictly greedy. In practice, `temperature=0` and `top_p=1` must be visible at analysis time.
 - Realized mode uses realized-path NLL plus local token diagnostics on the actual emitted path.
-- AgentUQ does not fake `G-NLL` for sampled trajectories.
+- AgentUQ does not fake `G-NLL` for sampled or unknown decoding paths.
 
 ## Why this works
 
@@ -49,16 +131,6 @@ For non-overlapping leaf segments, AgentUQ simply decomposes that same quantity 
 
 This is the intended operating model: let AgentUQ cheaply catch brittle or ambiguous steps, and reserve expensive verification for the steps that look risky.
 
-## Why this is still valuable when models can be confidently wrong
-
-Confident hallucinations are real. AgentUQ is valuable because it is a runtime gate, not because it is a truth oracle.
-
-- It is good at detecting brittle local generation, ambiguous action-bearing spans, and low-confidence stretches that are worth annotating, regenerating, or verifying.
-- It is especially useful on structured outputs, tool arguments, SQL, browser actions, shell commands, and other executed text where local token uncertainty is operationally meaningful.
-- It does not replace retrieval, semantic verification, sandboxing, or human review for high-probability factual errors or internally consistent confabulations.
-
-That is the right mental model: AgentUQ is the cheap first-pass gate that decides when a slower verifier should be invoked.
-
 ## Research grounding
 
 AgentUQ's method choice is intentionally narrow and research-backed:
@@ -67,7 +139,7 @@ AgentUQ's method choice is intentionally narrow and research-backed:
 - Token probabilities are a meaningful internal confidence signal, though not a perfect correctness estimator: [Kumar et al. 2024](https://aclanthology.org/2024.acl-long.20/)
 - Sequence likelihood is a strong black-box baseline, but raw sequence scoring alone is too blunt and wording-sensitive: [Lin et al. 2024](https://aclanthology.org/2024.emnlp-main.578/)
 - Local token uncertainty remains useful for selective generation and truthfulness-oriented ranking: [Vazhentsev et al. 2025](https://aclanthology.org/2025.naacl-long.113/)
-- Stronger meaning-level hallucination methods such as semantic entropy exist, but they usually need multiple samples and a higher runtime budget: [Farquhar et al. 2024](https://www.nature.com/articles/s41586-024-07421-0)
+- Stronger meaning-level hallucination methods such as semantic entropy exist, but they usually need multiple generations and a higher runtime budget: [Farquhar et al. 2024](https://www.nature.com/articles/s41586-024-07421-0)
 
 AgentUQ's product claim is therefore modest but strong: use the best lightweight probability signal the model already exposes, use it honestly, localize it to the spans that matter, and trigger cheap control actions before reaching for heavier verification.
 
@@ -90,7 +162,7 @@ Because AgentUQ is a gate, not a verifier. It is valuable when you want a cheap 
 
 **Why do you insist on greedy mode for G-NLL?**
 
-Because `G-NLL` is meant to describe the greedy path. If the run was sampled, or you cannot prove it was greedy, then the honest thing to score is the path that actually came out. That is why AgentUQ switches to realized mode instead of pretending a sampled path was canonical. See [Canonical vs realized](docs/concepts/canonical_vs_realized.md).
+Because `G-NLL` is meant to describe the greedy path. If the run was sampled, or the greedy settings are unknown at analysis time, then the honest thing to score is the path that actually came out. That is why AgentUQ switches to realized mode instead of pretending a sampled path was canonical. See [Canonical vs realized](docs/concepts/canonical_vs_realized.md).
 
 **Does segmentation break the math?**
 
@@ -118,14 +190,6 @@ Start with `policy` and `tolerance`, not raw thresholds. `policy` controls what 
 
 </details>
 
-## Install
-
-```bash
-python -m venv .venv
-. .venv/bin/activate
-pip install -e .[dev]
-```
-
 ## Testing
 
 AgentUQ uses a three-tier test strategy:
@@ -147,44 +211,6 @@ AGENTUQ_RUN_LIVE=1 python -m pytest -m live
 ```
 
 Live tests require local API keys and only assert structural invariants such as successful capture, capability detection, and `capture -> analyze -> decide` behavior. They do not assert exact model text or exact score values.
-
-## Quick start
-
-```python
-from uq_runtime.adapters.openai_chat import OpenAIChatAdapter
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.results import Action
-from uq_runtime.schemas.config import UQConfig
-
-adapter = OpenAIChatAdapter()
-analyzer = Analyzer(UQConfig(mode="auto", policy="balanced", tolerance="balanced"))
-
-record = adapter.capture(response, {
-    "model": "gpt-4o-mini",
-    "temperature": 0.0,
-    "top_p": 1.0,
-    "logprobs": True,
-    "top_logprobs": 5,
-    "deterministic": True,
-})
-result = analyzer.analyze_step(record, adapter.capability_report(response, {"logprobs": True, "top_logprobs": 5}))
-decision = result.decision
-print(result.pretty())
-
-if decision.action == Action.CONTINUE:
-    handle_success(response)
-elif decision.action == Action.CONTINUE_WITH_ANNOTATION:
-    logger.warning("AgentUQ flagged informational risk", extra={"uq_result": result.model_dump(mode="json")})
-    handle_success(response)
-elif decision.action == Action.REGENERATE_SEGMENT:
-    rerun_only_risky_span(result)
-elif decision.action in {Action.RETRY_STEP, Action.RETRY_STEP_WITH_CONSTRAINTS}:
-    retry_with_tighter_prompt_or_lower_temperature()
-elif decision.action == Action.DRY_RUN_VERIFY:
-    run_safe_validator_before_execution(result)
-elif decision.action in {Action.ASK_USER_CONFIRMATION, Action.BLOCK_EXECUTION}:
-    stop_before_side_effect(result)
-```
 
 ## Core objects
 
@@ -320,7 +346,7 @@ Default behavior is fail-loud on missing selected-token logprobs. Top-k gaps deg
 
 - OpenAI Responses
 - OpenAI Chat Completions
-- OpenAI wrapper
+- OpenAI Agents SDK helpers
 - LiteLLM
 - OpenRouter
 - LangChain wrapper/middleware
@@ -328,7 +354,6 @@ Default behavior is fail-loud on missing selected-token logprobs. Top-k gaps deg
 - Gemini
 - Fireworks
 - Together
-- OpenAI Agents SDK helpers
 
 ## Docs
 

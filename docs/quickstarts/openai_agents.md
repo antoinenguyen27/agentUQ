@@ -13,9 +13,8 @@ pip install -e .[dev]
 
 ```python
 from agents import Agent, ModelSettings, Runner
-from uq_runtime.adapters.openai_agents import OpenAIAgentsAdapter, latest_raw_response, model_settings_with_logprobs
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
+from agentuq import Analyzer, UQConfig
+from agentuq.adapters.openai_agents import OpenAIAgentsAdapter, latest_raw_response, model_settings_with_logprobs
 
 settings = model_settings_with_logprobs(top_logprobs=5, temperature=0.0, top_p=1.0)
 agent = Agent(
@@ -31,7 +30,6 @@ request_meta = {
     "top_logprobs": settings["top_logprobs"],
     "temperature": 0.0,
     "top_p": 1.0,
-    "deterministic": True,
 }
 adapter = OpenAIAgentsAdapter()
 analyzer = Analyzer(UQConfig(policy="balanced", tolerance="strict"))

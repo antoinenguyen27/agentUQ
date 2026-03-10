@@ -27,7 +27,7 @@ Each preset maps to a full threshold table for:
 You can override individual numeric values without replacing the whole preset:
 
 ```python
-from uq_runtime.schemas.config import UQConfig
+from agentuq import UQConfig
 
 config = UQConfig(
     tolerance="strict",
