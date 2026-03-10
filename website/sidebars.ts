@@ -80,11 +80,10 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'maintainers/versioning',
-        'verification_ledger',
+        'maintainers/integration_source_review',
       ],
     },
   ],
 };
 
 export default sidebars;
-

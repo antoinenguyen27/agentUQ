@@ -1,23 +1,27 @@
 ---
-title: Maintainers
-description: Docs workflow, versioning expectations, and maintainer-facing notes for keeping the documentation set honest.
+title: Maintainer Guide
+description: Documentation release, deployment, and integration-review processes for AgentUQ maintainers.
 slug: /maintainers
 sidebar_position: 7
 ---
 
-# Maintainers
+# Maintainer Guide
 
-This section is for the project owners rather than first-time library users.
+This section documents repeatable maintainer processes for the public docs site and integration-facing documentation.
 
-## Included pages
+## Use this section when you need to
 
-- [Docs versioning workflow](versioning.md)
-- [Documentation verification ledger](../verification_ledger.md)
+- cut or label a docs release
+- change the Docusaurus deployment or navigation behavior
+- review upstream provider or framework docs that affect adapters or request defaults
 
-## Maintainer defaults
+## Process documents
 
-- Canonical docs live in the repo under `docs/`.
-- The rendered docs site lives in `website/`.
-- `spec.md` stays out of the public docs site by design.
-- Docusaurus is the visual and navigational layer; Markdown remains the auditable source of truth.
+- [Docs release process](versioning.md)
+- [Integration source review](integration_source_review.md)
 
+## Scope
+
+- Public docs content is authored in `docs/`.
+- The Docusaurus site app and deployment configuration live in `website/`.
+- `spec.md` is a repository reference document and is not published on the docs site.

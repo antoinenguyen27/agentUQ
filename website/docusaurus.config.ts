@@ -128,8 +128,8 @@ const config: Config = {
               to: '/maintainers',
             },
             {
-              label: 'Verification ledger',
-              to: '/maintainers/verification-ledger',
+              label: 'Integration source review',
+              to: '/maintainers/integration-source-review',
             },
           ],
         },
