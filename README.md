@@ -4,7 +4,10 @@ Single-pass runtime reliability gate for LLM agents using token logprobs.
 
 AgentUQ turns provider-native token logprobs into localized runtime decisions for agent steps. It does not claim to know whether an output is true. It tells you where a generation looked brittle or ambiguous and whether the workflow should continue, annotate the trace, regenerate a risky span, retry the step, dry-run verify, ask for confirmation, or block execution.
 
-## Why teams use it
+[Full docs](https://agent-uq.vercel.app/)
+
+
+## How you can use it
 
 - Catch brittle action-bearing spans before execution: SQL clauses, tool arguments, selectors, URLs, paths, shell flags, and JSON leaves
 - Localize risk to the exact span that matters instead of treating the whole response as one opaque score
