@@ -1,3 +1,10 @@
+---
+title: Together Quickstart
+description: Normalize Together chat completion token arrays and top-logprob maps into AgentUQ records.
+slug: /quickstarts/together
+sidebar_position: 7
+---
+
 # Together Quickstart
 
 Together chat completions return token lists, token logprobs, and top-logprob maps under `choices[0].logprobs`.

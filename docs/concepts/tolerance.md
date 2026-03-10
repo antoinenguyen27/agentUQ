@@ -1,3 +1,10 @@
+---
+title: Tolerance
+description: Event sensitivity presets and how to tune thresholds only after policy and tolerance are roughly right.
+slug: /concepts/tolerance
+sidebar_position: 4
+---
+
 # Tolerance
 
 AgentUQ uses `tolerance` to control how easily it emits risk events. Action selection is configured separately with `policy`.

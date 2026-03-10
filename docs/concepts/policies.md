@@ -1,3 +1,10 @@
+---
+title: Policies
+description: How AgentUQ policy presets convert emitted events into concrete runtime actions.
+slug: /concepts/policies
+sidebar_position: 3
+---
+
 # Policies
 
 AgentUQ uses `policy` to choose actions after events are emitted. Event sensitivity is configured separately with `tolerance`.

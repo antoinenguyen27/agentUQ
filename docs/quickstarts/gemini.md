@@ -1,3 +1,10 @@
+---
+title: Gemini Quickstart
+description: Use AgentUQ with Gemini generate_content responses and responseLogprobs surfaces.
+slug: /quickstarts/gemini
+sidebar_position: 5
+---
+
 # Gemini Quickstart
 
 Gemini exposes chosen-token and top-candidate logprobs through `responseLogprobs` and `logprobs`.

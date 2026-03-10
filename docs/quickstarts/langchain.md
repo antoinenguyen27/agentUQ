@@ -1,3 +1,10 @@
+---
+title: LangChain Quickstart
+description: Wrap a LangChain-style model with AgentUQ middleware and attach UQ output to response metadata.
+slug: /quickstarts/langchain
+sidebar_position: 8
+---
+
 # LangChain Quickstart
 
 Use a wrapper around the chat model rather than a custom subclass.

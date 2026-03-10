@@ -1,3 +1,10 @@
+---
+title: Documentation Verification Ledger
+description: External documentation sources currently used to shape AgentUQ adapter behavior and request-helper defaults.
+slug: /maintainers/verification-ledger
+sidebar_position: 16
+---
+
 # Documentation Verification Ledger
 
 This file records the current external docs used to shape AgentUQ integration behavior.

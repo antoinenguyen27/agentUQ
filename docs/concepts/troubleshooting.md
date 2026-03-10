@@ -1,3 +1,10 @@
+---
+title: Troubleshooting
+description: Symptom-based fixes for missing logprobs, degraded capability, sampled runs, and live-test setup issues.
+slug: /concepts/troubleshooting
+sidebar_position: 11
+---
+
 # Troubleshooting
 
 ## Requested logprobs but response omitted them

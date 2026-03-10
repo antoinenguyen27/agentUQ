@@ -1,3 +1,10 @@
+---
+title: LangGraph Quickstart
+description: Enrich graph state with AgentUQ results and interrupt tool execution when grounded spans look risky.
+slug: /quickstarts/langgraph
+sidebar_position: 9
+---
+
 # LangGraph Quickstart
 
 Use wrapper and hook functions around model nodes, then gate the workflow before side effects. The default safe pattern is to attach `uq_result` after the model node and branch on `result.decision.action`; `should_interrupt_before_tool(...)` is a narrower helper for explicitly grounded tool spans.

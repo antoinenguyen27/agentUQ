@@ -1,3 +1,10 @@
+---
+title: OpenAI Agents SDK Quickstart
+description: Adapt raw OpenAI Agents SDK Responses payloads through AgentUQ for runtime reliability gating.
+slug: /quickstarts/openai-agents
+sidebar_position: 2
+---
+
 # OpenAI Agents SDK Quickstart
 
 Use the helper functions with the SDK's `ModelSettings`, then analyze the SDK's raw Responses objects.

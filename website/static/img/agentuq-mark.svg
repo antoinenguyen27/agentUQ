@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="agentuqTitle">
+  <title id="agentuqTitle">AgentUQ</title>
+  <defs>
+    <linearGradient id="aqGradient" x1="24" x2="214" y1="24" y2="214" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f766e" />
+      <stop offset="1" stop-color="#f59e0b" />
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="48" fill="#101a25" />
+  <path d="M61 63h72c33.137 0 60 26.863 60 60s-26.863 60-60 60H91v29H61V63Zm72 90c16.569 0 30-13.431 30-30s-13.431-30-30-30H91v60h42Z" fill="url(#aqGradient)" />
+  <path d="M191.9 200.4 165 173.5c-7.8 6.1-17.7 9.7-28.5 9.7-25.4 0-46-20.6-46-46s20.6-46 46-46 46 20.6 46 46c0 10.8-3.7 20.7-9.8 28.5l27 26.9-7.8 7.9ZM136.5 107.2c-16.5 0-29.8 13.3-29.8 29.8s13.3 29.8 29.8 29.8 29.8-13.3 29.8-29.8-13.3-29.8-29.8-29.8Z" fill="#f6faf8" opacity=".92" />
+</svg>

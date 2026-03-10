@@ -1,3 +1,10 @@
+---
+title: OpenRouter Quickstart
+description: Use AgentUQ with OpenRouter while preserving requested logprob parameters and checking routed capability honestly.
+slug: /quickstarts/openrouter
+sidebar_position: 3
+---
+
 # OpenRouter Quickstart
 
 For UQ-critical runs, require the router to preserve requested parameters.

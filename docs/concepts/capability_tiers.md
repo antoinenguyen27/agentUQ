@@ -1,3 +1,10 @@
+---
+title: Capability Tiers
+description: The three observed capability levels AgentUQ uses to describe returned token-logprob signal quality.
+slug: /concepts/capability-tiers
+sidebar_position: 8
+---
+
 # Capability Tiers
 
 AgentUQ reports the observed token-logprob capability of each generation.

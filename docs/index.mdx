@@ -1,0 +1,116 @@
+---
+title: AgentUQ Docs
+description: Runtime reliability gates for LLM agents using provider-native token logprobs.
+slug: /
+sidebar_position: 1
+---
+
+<div className="agentuq-home">
+  <section className="agentuq-home__hero">
+    <span className="agentuq-home__eyebrow">Docs v0.1.0</span>
+    <h1>Runtime reliability gates for LLM agents</h1>
+    <p className="agentuq-home__lede">
+      AgentUQ turns provider-native token logprobs into localized runtime actions for
+      agent steps. It does not claim to know whether an output is true. It tells you
+      where a generation looked brittle or ambiguous and whether the workflow should
+      continue, annotate the trace, regenerate a risky span, retry the step, dry-run
+      verify, ask for confirmation, or block execution.
+    </p>
+    <p className="agentuq-inline-note">
+      The documentation in this site is the web-first presentation layer. Canonical
+      docs stay in this repo under <code>docs/</code>, while the Docusaurus app lives
+      in <code>website/</code>.
+    </p>
+    <ul className="agentuq-home__pillars">
+      <li>
+        <strong>Localized risk, not one opaque score</strong>
+        Catch brittle SQL clauses, tool arguments, selectors, URLs, paths, shell flags,
+        and JSON leaves before execution.
+      </li>
+      <li>
+        <strong>Probability honesty over fake certainty</strong>
+        Use canonical scoring only for genuinely greedy runs and realized scoring for
+        the path that actually came out.
+      </li>
+      <li>
+        <strong>Cheap first-pass gating</strong>
+        Put a lightweight reliability layer in front of slower systems such as retrieval,
+        semantic verification, sandboxing, or human review.
+      </li>
+    </ul>
+  </section>
+
+  <section className="agentuq-home__section">
+    <h2>Where to start</h2>
+    <div className="agentuq-home__cards">
+      <a href="/get-started/install">
+        <strong>Install and orient</strong>
+        Set up the package, understand the repo layout, and get the baseline runtime
+        contract into your head quickly.
+      </a>
+      <a href="/get-started/quickstart">
+        <strong>Run the minimal loop</strong>
+        Capture a model response, analyze it, and branch on <code>result.decision.action</code>.
+      </a>
+      <a href="/quickstarts">
+        <strong>Pick your surface</strong>
+        Go straight to OpenAI, OpenRouter, LiteLLM, Gemini, Fireworks, Together,
+        LangChain, LangGraph, or OpenAI Agents.
+      </a>
+    </div>
+  </section>
+
+  <section className="agentuq-home__section">
+    <h2>What decisions AgentUQ can trigger</h2>
+    <div className="agentuq-home__mini-grid">
+      <div>
+        <ul>
+          <li><code>continue</code>: proceed normally.</li>
+          <li><code>continue_with_annotation</code>: proceed, but attach the result to logs, traces, or monitoring.</li>
+          <li><code>regenerate_segment</code>: retry only the risky leaf or clause when structured repair is available.</li>
+          <li><code>retry_step</code> / <code>retry_step_with_constraints</code>: rerun the whole model step.</li>
+        </ul>
+      </div>
+      <div>
+        <ul>
+          <li><code>dry_run_verify</code>: run a safe validator before execution.</li>
+          <li><code>ask_user_confirmation</code>: pause before a side effect.</li>
+          <li><code>block_execution</code>: fail closed before anything external happens.</li>
+          <li><code>custom</code>, <code>emit_webhook</code>, and <code>escalate_to_human</code>: dispatch through your own policy layer.</li>
+        </ul>
+      </div>
+    </div>
+    <p>
+      For concrete routing patterns, see <a href="/concepts/acting-on-decisions">Acting on decisions</a>.
+      For the statistical framing, read <a href="/concepts/research-grounding">Research grounding</a>.
+    </p>
+  </section>
+
+  <section className="agentuq-home__section">
+    <h2>Documentation map</h2>
+    <div className="agentuq-home__cards">
+      <a href="/quickstarts">
+        <strong>Quickstarts</strong>
+        Surface-specific setup and minimal code paths for providers and frameworks.
+      </a>
+      <a href="/concepts">
+        <strong>Concepts</strong>
+        The mental model behind scoring modes, segmentation, capability honesty, policy,
+        and tuning.
+      </a>
+      <a href="/reference/api">
+        <strong>Reference</strong>
+        Split API docs for the root surface, configs, results, adapters, integrations,
+        and public errors.
+      </a>
+    </div>
+  </section>
+</div>
+
+:::note Read this site as a DX layer, not as a separate source of truth
+
+The rendered docs optimize for scanning, navigation, and professionalism on the web.
+The underlying Markdown files in the repo remain canonical, auditable, and versionable.
+
+:::
+

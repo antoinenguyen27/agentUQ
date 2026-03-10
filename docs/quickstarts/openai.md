@@ -1,3 +1,10 @@
+---
+title: OpenAI Quickstart
+description: The default provider-first path for OpenAI Responses and Chat Completions with AgentUQ.
+slug: /quickstarts/openai
+sidebar_position: 1
+---
+
 # OpenAI Quickstart
 
 Use the Responses API for new agentic integrations. AgentUQ supports both Responses and Chat Completions.

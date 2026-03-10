@@ -1,3 +1,10 @@
+---
+title: Reading Results
+description: How to interpret AgentUQ summaries, segment metrics, triggered events, and threshold comparisons.
+slug: /concepts/reading-results
+sidebar_position: 2
+---
+
 # Reading Results
 
 AgentUQ results are designed to answer two questions quickly:

@@ -1,3 +1,10 @@
+---
+title: Fireworks Quickstart
+description: Normalize Fireworks chat completions into AgentUQ records and capability reports.
+slug: /quickstarts/fireworks
+sidebar_position: 6
+---
+
 # Fireworks Quickstart
 
 Fireworks exposes chat completions with an OpenAI-compatible `choices[0].logprobs.content` shape when you request `logprobs=True`, with compatibility fallbacks for older token-array payloads.

@@ -1,3 +1,10 @@
+---
+title: Canonical Vs Realized
+description: When to use greedy-path G-NLL versus realized-path scoring, and why AgentUQ refuses to blur the two.
+slug: /concepts/canonical-vs-realized
+sidebar_position: 7
+---
+
 # Canonical Vs Realized
 
 AgentUQ exposes two different probability objects and does not blur them.

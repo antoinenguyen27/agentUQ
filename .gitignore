@@ -20,6 +20,17 @@ site/
 .eggs/
 pip-wheel-metadata/
 
+# Website (Docusaurus / Node)
+website/node_modules/
+website/build/
+website/.docusaurus/
+website/.cache-loader/
+website/.vercel/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
 # Test, lint, and coverage output
 .pytest_cache/
 .coverage
@@ -41,4 +52,3 @@ quickstart_playgrounds
 .vscode/
 *.swp
 *.swo
-

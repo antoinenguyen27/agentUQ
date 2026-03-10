@@ -1,3 +1,10 @@
+---
+title: Provider And Framework Capabilities
+description: Capability expectations and caveats for direct providers, gateways, and framework metadata surfaces.
+slug: /concepts/provider-capabilities
+sidebar_position: 6
+---
+
 # Provider And Framework Capabilities
 
 AgentUQ relies on what the upstream surface actually returns, not what a request parameter merely suggests should be available.

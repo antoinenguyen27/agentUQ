@@ -1,3 +1,10 @@
+---
+title: Research Grounding
+description: The narrower claims AgentUQ makes about token probabilities, sequence likelihood, and operational localization.
+slug: /concepts/research-grounding
+sidebar_position: 9
+---
+
 # Research Grounding
 
 AgentUQ is designed to be academically honest and operationally useful.

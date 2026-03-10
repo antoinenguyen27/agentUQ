@@ -1,3 +1,10 @@
+---
+title: LiteLLM Quickstart
+description: Use AgentUQ with LiteLLM completion payloads while preserving real capability detection.
+slug: /quickstarts/litellm
+sidebar_position: 4
+---
+
 # LiteLLM Quickstart
 
 LiteLLM is treated as a transport and compatibility layer, not as a separate scoring path.

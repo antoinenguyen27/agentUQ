@@ -1,3 +1,10 @@
+---
+title: Acting On Decisions
+description: Runtime routing patterns for turning AgentUQ decisions into retries, verification, confirmations, or hard stops.
+slug: /concepts/acting-on-decisions
+sidebar_position: 1
+---
+
 # Acting On Decisions
 
 AgentUQ is most useful when `UQResult` leads directly to a runtime action.

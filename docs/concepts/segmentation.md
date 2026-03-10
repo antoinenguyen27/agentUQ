@@ -1,3 +1,10 @@
+---
+title: Segmentation
+description: How AgentUQ localizes emitted-path likelihood onto action-bearing spans without inventing a new score.
+slug: /concepts/segmentation
+sidebar_position: 5
+---
+
 # Segmentation
 
 Whole-response scoring is too blunt for agent systems. AgentUQ segments generations into action-bearing spans so policy can target the risky part rather than the whole response.

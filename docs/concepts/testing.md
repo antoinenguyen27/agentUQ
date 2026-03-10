@@ -1,3 +1,10 @@
+---
+title: Testing
+description: Unit, contract, and live-test expectations for AgentUQ contributors and maintainers.
+slug: /concepts/testing
+sidebar_position: 10
+---
+
 # Testing
 
 AgentUQ uses three complementary test layers.
