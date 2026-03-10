@@ -9,11 +9,12 @@ sidebar_position: 5
 
 Gemini exposes chosen-token and top-candidate logprobs through `responseLogprobs` and `logprobs`.
 
+**Status:** `Preview`
+
 ## Install
 
 ```bash
-pip install google-genai
-pip install -e .[dev]
+pip install agentuq google-genai
 ```
 
 ## Minimal request with readable terminal output

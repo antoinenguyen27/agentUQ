@@ -9,11 +9,12 @@ sidebar_position: 7
 
 Together chat completions return token lists, token logprobs, and top-logprob maps under `choices[0].logprobs`.
 
+**Status:** `Preview`
+
 ## Install
 
 ```bash
-pip install together
-pip install -e .[dev]
+pip install agentuq together
 ```
 
 ## Minimal request with readable terminal output

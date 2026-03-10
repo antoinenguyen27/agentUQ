@@ -9,11 +9,12 @@ sidebar_position: 1
 
 Use the Responses API for new agentic integrations. AgentUQ supports both Responses and Chat Completions.
 
+**Status:** OpenAI Responses API is `Stable`. OpenAI Chat Completions is `Preview`.
+
 ## Install
 
 ```bash
-pip install openai
-pip install -e .[dev]
+pip install agentuq openai
 ```
 
 ## Minimal request with readable terminal output
@@ -65,7 +66,7 @@ print(result.pretty())
 
 ## Capture -> analyze -> decide
 
-Use `OpenAIResponsesAdapter` or `OpenAIChatAdapter`, then pass the normalized record into `Analyzer`.
+Use `OpenAIResponsesAdapter` or `OpenAIChatAdapter`, then pass the normalized record into `Analyzer`. Prefer `OpenAIResponsesAdapter` for the stable path; treat `OpenAIChatAdapter` as preview.
 
 For canonical mode, keep the request strictly greedy: `temperature=0` and `top_p=1` must be visible in the captured request metadata. If AgentUQ cannot establish that, it will analyze the step in realized mode instead.
 
@@ -113,7 +114,7 @@ Segments
 
 ## Troubleshooting
 
-- Chat Completions: pass `logprobs=True` and `top_logprobs=k`.
+- Chat Completions (`Preview`): pass `logprobs=True` and `top_logprobs=k`.
 - Responses: include `message.output_text.logprobs`; do not assume function-call items carry token logprobs.
 - OpenAI-family tool calls are captured structurally, but tool-name/tool-argument segments require explicit token grounding rather than incidental mentions in assistant prose.
 - For the full runtime loop and customization model, see [Acting on decisions](../concepts/acting_on_decisions.md) and [Policies](../concepts/policies.md).

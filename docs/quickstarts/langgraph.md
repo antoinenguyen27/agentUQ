@@ -9,11 +9,12 @@ sidebar_position: 9
 
 Use wrapper and hook functions around model nodes, then gate the workflow before side effects. The default safe pattern is to attach `uq_result` after the model node and branch on `result.decision.action`; `should_interrupt_before_tool(...)` is a narrower helper for explicitly grounded tool spans.
 
+**Status:** `Preview`
+
 ## Install
 
 ```bash
-pip install langgraph langchain-openai
-pip install -e .[dev]
+pip install agentuq langgraph langchain-openai
 ```
 
 ## Minimal pattern with readable terminal output

@@ -12,6 +12,7 @@ AgentUQ's canonical API reference is now split into focused pages so the docs ar
 ## How to read this section
 
 - `Stable`: intended long-term public surface for normal library use
+- `Preview`: implemented and documented, but still subject to narrower support guarantees and faster iteration
 - `Advanced`: real supported surface, but narrower, more caveat-heavy, or less central to the default integration loop
 
 ## Coverage inventory
@@ -29,8 +30,8 @@ This reference set is audited against these implemented sources of truth:
 - [Root API](../reference/root-api.md): top-level exports from `agentuq`
 - [Config models](../reference/config-models.md): `UQConfig`, capability config, thresholds, segmentation, integrations, and custom rules
 - [Records and results](../reference/results-and-records.md): `GenerationRecord`, `CapabilityReport`, `UQResult`, `Decision`, segments, events, and enums
-- [Adapters](../reference/adapters.md): provider and framework adapters
-- [Integrations](../reference/integrations.md): middleware and graph helpers
+- [Adapters](../reference/adapters.md): provider and framework adapters, with OpenAI Responses marked stable and other integration surfaces marked preview
+- [Integrations](../reference/integrations.md): middleware and graph helpers, currently preview
 - [Utilities and errors](../reference/utilities-and-errors.md): advanced helper functions and public error types
 
 ## Not covered here
@@ -40,4 +41,3 @@ This section does not document internal implementation modules such as segmentat
 ## Read alongside the concepts docs
 
 Use [Reading results](reading_results.md), [Policies](policies.md), [Tolerance](tolerance.md), [Canonical vs realized](canonical_vs_realized.md), [Troubleshooting](troubleshooting.md), and [Provider and framework capabilities](provider_capabilities.md) for the deeper behavioral and conceptual explanation behind these interfaces.
-

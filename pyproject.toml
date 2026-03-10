@@ -12,14 +12,43 @@ license = { text = "MIT" }
 authors = [
   { name = "AgentUQ OSS Contributors" }
 ]
+keywords = [
+  "agent-reliability",
+  "ai-agents",
+  "llm",
+  "logprobs",
+  "observability",
+  "uncertainty",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+license-files = ["LICENSE.txt"]
 dependencies = [
   "pydantic>=2.8,<3",
   "typing-extensions>=4.10,<5",
 ]
 
+[project.urls]
+Homepage = "https://github.com/antoinenguyen27/agentUQ"
+Documentation = "https://github.com/antoinenguyen27/agentUQ/tree/main/docs"
+Repository = "https://github.com/antoinenguyen27/agentUQ"
+Issues = "https://github.com/antoinenguyen27/agentUQ/issues"
+
 [project.optional-dependencies]
 dev = [
+  "build>=1.2,<2",
   "pytest>=8.2,<9",
+  "twine>=5,<7",
 ]
 rich = [
   "rich>=13.7,<15",

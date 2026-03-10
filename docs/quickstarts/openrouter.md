@@ -9,11 +9,12 @@ sidebar_position: 3
 
 For UQ-critical runs, require the router to preserve requested parameters.
 
+**Status:** `Preview`
+
 ## Install
 
 ```bash
-pip install openai
-pip install -e .[dev]
+pip install agentuq openai
 ```
 
 ## Minimal request with readable terminal output

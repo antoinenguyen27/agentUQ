@@ -9,11 +9,12 @@ sidebar_position: 4
 
 LiteLLM is treated as a transport and compatibility layer, not as a separate scoring path.
 
+**Status:** `Preview`
+
 ## Install
 
 ```bash
-pip install litellm
-pip install -e .[dev]
+pip install agentuq litellm
 ```
 
 ## Minimal request with readable terminal output

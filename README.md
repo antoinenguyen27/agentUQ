@@ -13,12 +13,28 @@ AgentUQ turns provider-native token logprobs into localized runtime decisions fo
 ## Install
 
 ```bash
+pip install agentuq
+```
+
+For the OpenAI example below, also install the provider SDK:
+
+```bash
+pip install openai
+```
+
+For local development and contributions:
+
+```bash
 python -m venv .venv
 . .venv/bin/activate
 pip install -e .[dev]
 ```
 
 Examples below assume the public package and import namespace `agentuq`.
+
+## Integration status
+
+OpenAI Responses API is the stable integration path in the current docs. Every other documented provider, gateway, and framework integration is preview, including OpenAI Chat Completions, OpenRouter, LiteLLM, Gemini, Fireworks, Together, LangChain, LangGraph, and the OpenAI Agents SDK.
 
 ## Minimal loop
 

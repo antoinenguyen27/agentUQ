@@ -9,11 +9,12 @@ sidebar_position: 6
 
 Fireworks exposes chat completions with an OpenAI-compatible `choices[0].logprobs.content` shape when you request `logprobs=True`, with compatibility fallbacks for older token-array payloads.
 
+**Status:** `Preview`
+
 ## Install
 
 ```bash
-pip install openai
-pip install -e .[dev]
+pip install agentuq openai
 ```
 
 ## Minimal request with readable terminal output

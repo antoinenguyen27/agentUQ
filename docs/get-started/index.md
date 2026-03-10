@@ -17,6 +17,8 @@ Use this section when you want the shortest path from clone to informed runtime 
 4. Read [Reading results](../concepts/reading_results.md) once you start looking at real output.
 5. Jump to [Quickstarts](../quickstarts/index.md) for your provider or framework surface.
 
+The default path in this section is the stable OpenAI Responses API flow. Other provider, gateway, and framework integrations are documented as preview.
+
 ## What this section covers
 
 - package installation and local setup
@@ -29,4 +31,3 @@ Use this section when you want the shortest path from clone to informed runtime 
 - It does not replace the provider-specific quickstarts.
 - It does not replace the deeper statistical framing in [Research grounding](../concepts/research_grounding.md).
 - It does not repeat the full object-by-object API inventory from the [API reference](../concepts/public_api.md).
-

@@ -9,11 +9,12 @@ sidebar_position: 8
 
 Use a wrapper around the chat model rather than a custom subclass.
 
+**Status:** `Preview`
+
 ## Install
 
 ```bash
-pip install langchain langchain-openai
-pip install -e .[dev]
+pip install agentuq langchain langchain-openai
 ```
 
 ## Minimal request with readable terminal output

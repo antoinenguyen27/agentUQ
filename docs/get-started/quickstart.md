@@ -9,6 +9,8 @@ sidebar_position: 4
 
 Use the OpenAI Responses API for new agentic integrations. AgentUQ supports both Responses and Chat Completions, but this is the shortest end-to-end loop.
 
+**Status:** This getting-started path uses the `Stable` OpenAI Responses API integration. Other provider, gateway, and framework integrations documented in the quickstarts are `Preview`.
+
 ## Minimal `capture -> analyze -> decide` loop
 
 ```python

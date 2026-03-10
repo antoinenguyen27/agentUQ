@@ -9,11 +9,12 @@ sidebar_position: 2
 
 Use the helper functions with the SDK's `ModelSettings`, then analyze the SDK's raw Responses objects.
 
+**Status:** `Preview`
+
 ## Install
 
 ```bash
-pip install openai-agents
-pip install -e .[dev]
+pip install agentuq openai-agents
 ```
 
 ## Minimal pattern with readable terminal output

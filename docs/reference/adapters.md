@@ -9,6 +9,8 @@ sidebar_position: 13
 
 All adapter classes are re-exported from `agentuq.adapters`.
 
+**Integration status:** `OpenAIResponsesAdapter` is `Stable`. Every other adapter or integration helper on this page is `Preview`.
+
 ## `OpenAIResponsesAdapter` (`Stable`)
 
 - Import: `from agentuq.adapters import OpenAIResponsesAdapter`
@@ -22,7 +24,7 @@ All adapter classes are re-exported from `agentuq.adapters`.
 - Caveat: tool/function call items are captured structurally; token-grounded scoring is limited to message text
 - Links: [OpenAI quickstart](../quickstarts/openai.md)
 
-## `OpenAIChatAdapter` (`Stable`)
+## `OpenAIChatAdapter` (`Preview`)
 
 - Import: `from agentuq.adapters import OpenAIChatAdapter`
 - Signature:
@@ -35,7 +37,7 @@ All adapter classes are re-exported from `agentuq.adapters`.
 - Caveat: OpenAI-family `tool_calls` are structural only unless the upstream surface provides explicit grounding
 - Links: [OpenAI quickstart](../quickstarts/openai.md)
 
-## `OpenRouterAdapter` (`Stable`)
+## `OpenRouterAdapter` (`Preview`)
 
 - Import: `from agentuq.adapters import OpenRouterAdapter`
 - Signature:
@@ -48,7 +50,7 @@ All adapter classes are re-exported from `agentuq.adapters`.
 - Caveat: a request may be accepted even when the routed backend does not return the requested token details; prefer `provider.require_parameters=true`
 - Links: [OpenRouter quickstart](../quickstarts/openrouter.md), [Provider and framework capabilities](../concepts/provider_capabilities.md)
 
-## `LiteLLMAdapter` (`Stable`)
+## `LiteLLMAdapter` (`Preview`)
 
 - Import: `from agentuq.adapters import LiteLLMAdapter`
 - Signature:
@@ -61,7 +63,7 @@ All adapter classes are re-exported from `agentuq.adapters`.
 - Caveat: silent parameter dropping can hide unsupported logprob requests; prefer `drop_params=False`
 - Links: [LiteLLM quickstart](../quickstarts/litellm.md)
 
-## `GeminiAdapter` (`Stable`)
+## `GeminiAdapter` (`Preview`)
 
 - Import: `from agentuq.adapters import GeminiAdapter`
 - Signature:
@@ -74,7 +76,7 @@ All adapter classes are re-exported from `agentuq.adapters`.
 - Caveat: Gemini uses `topP` rather than `top_p` in request metadata, and no chosen-token logprobs means no top-k diagnostics
 - Links: [Gemini quickstart](../quickstarts/gemini.md)
 
-## `FireworksAdapter` (`Stable`)
+## `FireworksAdapter` (`Preview`)
 
 - Import: `from agentuq.adapters import FireworksAdapter`
 - Signature:
@@ -87,7 +89,7 @@ All adapter classes are re-exported from `agentuq.adapters`.
 - Caveat: prefers `choices[0].logprobs.content`, but falls back to older token-array variants when needed
 - Links: [Fireworks quickstart](../quickstarts/fireworks.md)
 
-## `TogetherAdapter` (`Stable`)
+## `TogetherAdapter` (`Preview`)
 
 - Import: `from agentuq.adapters import TogetherAdapter`
 - Signature:
@@ -100,7 +102,7 @@ All adapter classes are re-exported from `agentuq.adapters`.
 - Caveat: Together requests `logprobs=k` rather than separate `top_logprobs`
 - Links: [Together quickstart](../quickstarts/together.md)
 
-## `OpenAIAgentsAdapter` (`Stable`)
+## `OpenAIAgentsAdapter` (`Preview`)
 
 - Import: `from agentuq.adapters import OpenAIAgentsAdapter`
 - Signature:
@@ -113,7 +115,7 @@ All adapter classes are re-exported from `agentuq.adapters`.
 - Caveat: this helper assumes the SDK still exposes raw Responses payloads for analysis
 - Links: [OpenAI Agents quickstart](../quickstarts/openai_agents.md)
 
-## `model_settings_with_logprobs` (`Advanced`)
+## `model_settings_with_logprobs` (`Preview`)
 
 - Import: `from agentuq.adapters import model_settings_with_logprobs`
 - Signature: `model_settings_with_logprobs(*, top_logprobs=5, include_output_text_logprobs=True, **kwargs) -> dict[str, Any]`
@@ -122,7 +124,7 @@ All adapter classes are re-exported from `agentuq.adapters`.
 - Returns / output: plain dictionary suitable for `ModelSettings(**settings)`
 - Caveat: this helper is specific to the OpenAI Agents SDK `ModelSettings` surface, not raw `OpenAI().responses.create(...)`
 
-## `latest_raw_response` (`Advanced`)
+## `latest_raw_response` (`Preview`)
 
 - Import: `from agentuq.adapters.openai_agents import latest_raw_response`
 - Signature: `latest_raw_response(run_result) -> Any`
@@ -131,7 +133,7 @@ All adapter classes are re-exported from `agentuq.adapters`.
 - Returns / output: the last raw Responses payload
 - Caveat: raises `ValueError` if `raw_responses` is unavailable
 
-## `probe_openrouter_model` (`Advanced`)
+## `probe_openrouter_model` (`Preview`)
 
 - Import: `from agentuq.adapters import probe_openrouter_model`
 - Signature: `probe_openrouter_model(model: str, supported_parameters: list[str] | None = None) -> dict[str, Any]`
@@ -140,7 +142,7 @@ All adapter classes are re-exported from `agentuq.adapters`.
 - Returns / output: plain dictionary describing declared parameter support
 - Caveat: this is a caller-supplied capability hint, not proof that the routed backend will actually return token details
 
-## `probe_litellm_capability` (`Advanced`)
+## `probe_litellm_capability` (`Preview`)
 
 - Import: `from agentuq.adapters import probe_litellm_capability`
 - Signature: `probe_litellm_capability(model: str, provider: str | None = None, supported_openai_params: list[str] | None = None) -> dict[str, Any]`
@@ -148,4 +150,3 @@ All adapter classes are re-exported from `agentuq.adapters`.
 - Key parameters: `model`, optional `provider`, optional `supported_openai_params`
 - Returns / output: plain dictionary describing declared support
 - Caveat: this helper reflects caller-provided support metadata; the actual returned payload still determines runtime capability
-

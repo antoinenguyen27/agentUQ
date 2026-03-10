@@ -1,6 +1,6 @@
 ---
 title: Install
-description: Install AgentUQ locally, understand the editable dev workflow, and know which extras are optional.
+description: Install AgentUQ from PyPI, then layer on optional extras or the editable contributor workflow when needed.
 slug: /get-started/install
 sidebar_position: 3
 ---
@@ -9,7 +9,15 @@ sidebar_position: 3
 
 AgentUQ is a Python package. The docs site is separate and lives in `website/`, but the library install flow is still the core first step for contributors and evaluators.
 
+## Install from PyPI
+
+```bash
+pip install agentuq
+```
+
 ## Local editable install
+
+Use the editable install when you are contributing to the library itself:
 
 ```bash
 python -m venv .venv
@@ -31,6 +39,8 @@ pip install 'agentuq[rich]'
 
 AgentUQ normalizes upstream payloads, so provider SDKs are installed separately depending on the quickstart you use.
 
+OpenAI Responses API is the stable integration path. The other provider, gateway, and framework quickstarts are preview.
+
 - OpenAI / OpenRouter: `pip install openai`
 - Gemini: `pip install google-genai`
 - Fireworks: `pip install openai`
@@ -45,4 +55,3 @@ See the [Quickstarts](../quickstarts/index.md) section for exact examples.
 - Read the [Quickstart](quickstart.md) for the minimal runtime loop.
 - Go directly to [OpenAI Quickstart](../quickstarts/openai.md) if you want the default provider-first path.
 - Read [Testing](../concepts/testing.md) if you are contributing rather than only evaluating.
-
