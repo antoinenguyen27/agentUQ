@@ -97,6 +97,8 @@ Available verbosity levels:
 - `summary`: default. Summary plus interesting segments and triggered event explanations
 - `debug`: full summary, all segments, more metrics, and optional threshold tables
 
+Plain-text output is the canonical rendering contract. It is optimized for terminals, logs, and trace notes even when Rich is not installed.
+
 Available threshold display modes:
 
 - `none`: never show threshold comparisons
@@ -109,6 +111,16 @@ Examples:
 print(result.pretty())
 print(result.pretty(verbosity="compact"))
 print(result.pretty(verbosity="debug", show_thresholds="all"))
+```
+
+Optional Rich rendering is available if you install the extra:
+
+```bash
+pip install 'agentuq[rich]'
+```
+
+```python
+result.rich_console_render()
 ```
 
 Default `summary` output includes:

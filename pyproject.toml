@@ -21,6 +21,9 @@ dependencies = [
 dev = [
   "pytest>=8.2,<9",
 ]
+rich = [
+  "rich>=13.7,<15",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/uq_runtime"]

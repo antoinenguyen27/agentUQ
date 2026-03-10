@@ -114,3 +114,22 @@ class UQResult(BaseModel):
         from uq_runtime.rendering import render_result
 
         return render_result(self, verbosity=verbosity, show_thresholds=show_thresholds)
+
+    def rich_renderable(
+        self,
+        verbosity: Literal["compact", "summary", "debug"] = "summary",
+        show_thresholds: Literal["none", "triggered", "all"] = "triggered",
+    ) -> Any:
+        from uq_runtime.rendering import render_result_rich
+
+        return render_result_rich(self, verbosity=verbosity, show_thresholds=show_thresholds)
+
+    def rich_console_render(
+        self,
+        console: Any | None = None,
+        verbosity: Literal["compact", "summary", "debug"] = "summary",
+        show_thresholds: Literal["none", "triggered", "all"] = "triggered",
+    ) -> None:
+        from uq_runtime.rendering import print_result_rich
+
+        print_result_rich(self, console=console, verbosity=verbosity, show_thresholds=show_thresholds)

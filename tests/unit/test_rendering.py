@@ -1,3 +1,6 @@
+import sys
+import types
+
 from uq_runtime.analysis.analyzer import Analyzer
 from uq_runtime.schemas.config import UQConfig
 from uq_runtime.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
@@ -83,16 +86,17 @@ def test_pretty_summary_includes_explanatory_event_thresholds():
 
     assert result.resolved_thresholds is not None
     assert "Summary" in rendered
+    assert "recommended_action:" in rendered
+    assert "rationale:" in rendered
     assert "mode: realized" in rendered
     assert "aggregate_primary_score:" in rendered
     assert "score_note: aggregate over full emitted path; compare segments for operational risk" in rendered
-    assert "action:" in rendered
+    assert "Risk Summary" in rendered
     assert "top_risk:" in rendered
-    assert "risk_basis:" in rendered
-    assert "rationale:" in rendered
+    assert "risk_drivers:" in rendered
     assert "capability: full" in rendered
     assert "Segments" in rendered
-    assert "tool_argument_leaf" in rendered
+    assert "tool argument value" in rendered
     assert "ARGUMENT_VALUE_UNCERTAIN" in rendered
     assert "action_head_surprise=" in rendered
 
@@ -146,11 +150,140 @@ def test_pretty_debug_can_show_all_thresholds():
 
     rendered = result.pretty(verbosity="debug", show_thresholds="all")
 
+    assert "Technical Details" in rendered
     assert "capability_details:" in rendered
     assert "Segments" in rendered
+    assert "surprise:" in rendered
+    assert "margin:" in rendered
+    assert "entropy:" in rendered
+    assert "rank:" in rendered
     assert "thresholds:" in rendered
     assert "low_margin_log=" in rendered
     assert "action_head_surprise=" in rendered
+    assert "debug_kind: final_answer_text" in rendered
+
+
+def test_pretty_surfaces_capability_gaps_before_segments():
+    analyzer = Analyzer(UQConfig(mode="auto"))
+    record, _capability = _quiet_record()
+    degraded = CapabilityReport(
+        selected_token_logprobs=True,
+        topk_logprobs=False,
+        structured_blocks=True,
+        request_attempted_logprobs=True,
+        request_attempted_topk=2,
+        degraded_reason="router removed top-k support",
+    )
+
+    result = analyzer.analyze_step(record, degraded)
+    rendered = result.pretty()
+
+    assert "Capability Gaps" in rendered
+    assert "Selected-token logprobs are available, but top-k diagnostics are unavailable." in rendered
+    assert "router removed top-k support" in rendered
+    assert rendered.index("Capability Gaps") < rendered.index("Segments")
+
+
+def test_rich_render_requires_optional_dependency():
+    analyzer = Analyzer(UQConfig(mode="auto"))
+    record, capability = _quiet_record()
+    result = analyzer.analyze_step(record, capability)
+
+    try:
+        result.rich_renderable()
+    except RuntimeError as exc:
+        assert "pip install agentuq[rich]" in str(exc)
+    else:
+        raise AssertionError("Expected missing rich dependency to raise RuntimeError")
+
+
+def test_rich_renderable_uses_shared_sections_with_fake_rich(monkeypatch):
+    class FakeText:
+        def __init__(self) -> None:
+            self.parts: list[str] = []
+
+        def append(self, text: str, style: str | None = None) -> None:
+            self.parts.append(text)
+
+        def __str__(self) -> str:
+            return "".join(self.parts)
+
+    class FakeTable:
+        def __init__(self, *_args, **_kwargs) -> None:
+            self.rows: list[tuple[str, ...]] = []
+            self.expand = False
+
+        @classmethod
+        def grid(cls, *_args, **_kwargs):
+            return cls()
+
+        def add_column(self, *_args, **_kwargs) -> None:
+            return None
+
+        def add_row(self, *values) -> None:
+            self.rows.append(tuple(str(value) for value in values))
+
+        def __str__(self) -> str:
+            return "\n".join(" | ".join(row) for row in self.rows)
+
+    class FakePanel:
+        def __init__(self, renderable, title: str = "", border_style: str = "") -> None:
+            self.renderable = renderable
+            self.title = title
+            self.border_style = border_style
+
+        def __str__(self) -> str:
+            return f"{self.title}\n{self.renderable}"
+
+    class FakeGroup:
+        def __init__(self, *renderables) -> None:
+            self.renderables = renderables
+
+        def __str__(self) -> str:
+            return "\n".join(str(renderable) for renderable in self.renderables)
+
+    class FakeConsole:
+        def __init__(self) -> None:
+            self.output: list[str] = []
+
+        def print(self, renderable) -> None:
+            self.output.append(str(renderable))
+
+    fake_rich = types.ModuleType("rich")
+    fake_console = types.ModuleType("rich.console")
+    fake_panel = types.ModuleType("rich.panel")
+    fake_table = types.ModuleType("rich.table")
+    fake_text = types.ModuleType("rich.text")
+    fake_console.Console = FakeConsole
+    fake_console.Group = FakeGroup
+    fake_panel.Panel = FakePanel
+    fake_table.Table = FakeTable
+    fake_text.Text = FakeText
+
+    monkeypatch.setitem(sys.modules, "rich", fake_rich)
+    monkeypatch.setitem(sys.modules, "rich.console", fake_console)
+    monkeypatch.setitem(sys.modules, "rich.panel", fake_panel)
+    monkeypatch.setitem(sys.modules, "rich.table", fake_table)
+    monkeypatch.setitem(sys.modules, "rich.text", fake_text)
+
+    analyzer = Analyzer(UQConfig(mode="realized"))
+    record, capability = _noisy_record()
+    result = analyzer.analyze_step(record, capability)
+
+    renderable = result.rich_renderable(verbosity="debug", show_thresholds="all")
+    rendered = str(renderable)
+
+    assert "Summary" in rendered
+    assert "Risk Summary" in rendered
+    assert "Segments" in rendered
+    assert "tool argument value" in rendered
+    assert "code=ARGUMENT_VALUE_UNCERTAIN" in rendered
+    assert "thresholds" in rendered
+
+    console = FakeConsole()
+    result.rich_console_render(console=console)
+    assert console.output
+    assert "Summary" in console.output[0]
 
 
 def test_pretty_rejects_invalid_options():
