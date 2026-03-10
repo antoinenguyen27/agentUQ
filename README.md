@@ -77,6 +77,7 @@ The web docs are built with Docusaurus from the canonical Markdown in [`docs/`](
 - Concepts: [docs/concepts/index.md](docs/concepts/index.md)
 - API reference: [docs/concepts/public_api.md](docs/concepts/public_api.md)
 - Maintainers: [docs/maintainers/index.md](docs/maintainers/index.md)
+- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Repo layout
 
