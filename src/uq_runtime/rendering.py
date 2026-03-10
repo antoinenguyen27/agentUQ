@@ -170,27 +170,49 @@ def _top_risk_segments(result: UQResult) -> list[SegmentResult]:
     )
 
 
+def _decision_drivers(result: UQResult) -> list[SegmentResult]:
+    return [segment for segment in _top_risk_segments(result) if segment.recommended_action == result.action]
+
+
+def _decision_driver_summary(result: UQResult) -> str:
+    drivers = _decision_drivers(result)
+    if not drivers:
+        return "none"
+    lead = drivers[0]
+    summary = f"{_friendly_segment_label(lead.kind)} [{lead.priority}] -> {ACTION_LABELS[lead.recommended_action]}"
+    if len(drivers) == 1:
+        return summary
+    return f"representative segment: {summary} ({len(drivers)} matching drivers)"
+
+
 def _risk_driver_label(result: UQResult) -> str:
-    drivers = [segment for segment in _top_risk_segments(result) if segment.recommended_action == result.action]
+    drivers = _decision_drivers(result)
     if not drivers:
         return "none"
     if all(segment.priority in {"informational", "low_priority"} for segment in drivers):
-        return "informational prose span(s)"
-    return "action-bearing segment(s)"
+        return "informational prose span" if len(drivers) == 1 else "informational prose spans"
+    return "action-bearing segment" if len(drivers) == 1 else "action-bearing segments"
 
 
 def _risk_drivers(result: UQResult) -> str:
-    drivers = [segment for segment in _top_risk_segments(result) if segment.recommended_action == result.action]
+    drivers = _decision_drivers(result)
     if not drivers:
         return "none"
     return ", ".join(f"{_friendly_segment_label(segment.kind)} ({segment.id})" for segment in drivers)
 
 
 def _risk_driver_preview(result: UQResult) -> str:
-    drivers = [segment for segment in _top_risk_segments(result) if segment.recommended_action == result.action]
+    drivers = _decision_drivers(result)
     if not drivers:
         return "n/a"
     return _preview(drivers[0].text)
+
+
+def _decision_note(result: UQResult) -> str:
+    drivers = _decision_drivers(result)
+    if len(drivers) > 1:
+        return "The recommended action comes from the segment events and policy mapping in this section. The first line shows a representative driver; the list below shows all matching drivers."
+    return "The recommended action comes from the segment events and policy mapping in this section."
 
 
 def _event_detail(_segment: SegmentResult, event: Event, _result: UQResult) -> str | None:
@@ -406,19 +428,11 @@ def build_display_model(
         capability_gaps.append(f"{event.code}: {event.subtitle}. {event.message}")
 
     risk_summary = [
-        (
-            "decision_driving_segment",
-            (
-                f"{_friendly_segment_label(top_risk[0].kind)} [{top_risk[0].priority}] -> "
-                f"{ACTION_LABELS[top_risk[0].recommended_action]}"
-            )
-            if top_risk
-            else "none"
-        ),
+        ("decision_driving_segment", _decision_driver_summary(result)),
         ("decision_driver_type", _risk_driver_label(result)),
         ("decision_driving_segments", _risk_drivers(result)),
         ("decision_driver_preview", _risk_driver_preview(result)),
-        ("decision_note", "The recommended action comes from the segment events and policy mapping in this section."),
+        ("decision_note", _decision_note(result)),
     ]
 
     technical_details: list[tuple[str, str]] = []

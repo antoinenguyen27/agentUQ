@@ -4,6 +4,7 @@ import types
 from uq_runtime.analysis.analyzer import Analyzer
 from uq_runtime.schemas.config import UQConfig
 from uq_runtime.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
+from uq_runtime.schemas.results import Action, Decision, Diagnostics, Event, EventSeverity, PrimaryScoreType, SegmentMetrics, SegmentResult, UQResult
 
 
 def _quiet_record() -> tuple[GenerationRecord, CapabilityReport]:
@@ -75,6 +76,62 @@ def _noisy_record() -> tuple[GenerationRecord, CapabilityReport]:
         request_attempted_topk=2,
     )
     return record, capability
+
+
+def _multi_driver_result() -> UQResult:
+    _record, capability = _quiet_record()
+    driver_event_1 = Event(
+        type="LOW_MARGIN_CLUSTER",
+        severity=EventSeverity.WARN,
+        segment_id="seg-1",
+        message="Repeated low-margin tokens in segment.",
+        details={"low_margin_run_max": 2, "min_run": 1, "low_margin_rate": 0.2, "threshold": 0.25},
+    )
+    driver_event_2 = Event(
+        type="LOW_MARGIN_CLUSTER",
+        severity=EventSeverity.WARN,
+        segment_id="seg-2",
+        message="Repeated low-margin tokens in segment.",
+        details={"low_margin_run_max": 1, "min_run": 1, "low_margin_rate": 0.1, "threshold": 0.25},
+    )
+    return UQResult(
+        primary_score=2.0,
+        primary_score_type=PrimaryScoreType.G_NLL,
+        mode="canonical",
+        capability_level=capability.level,
+        capability_report=capability,
+        segments=[
+            SegmentResult(
+                id="seg-1",
+                kind="final_answer_text",
+                priority="informational",
+                text="First prose span.",
+                token_span=(0, 3),
+                primary_score=1.2,
+                metrics=SegmentMetrics(low_margin_run_max=2, low_margin_rate=0.2, max_surprise=0.8),
+                events=[driver_event_1],
+                recommended_action=Action.CONTINUE_WITH_ANNOTATION,
+            ),
+            SegmentResult(
+                id="seg-2",
+                kind="final_answer_text",
+                priority="informational",
+                text="Second prose span.",
+                token_span=(3, 5),
+                primary_score=0.8,
+                metrics=SegmentMetrics(low_margin_run_max=1, low_margin_rate=0.1, max_surprise=0.7),
+                events=[driver_event_2],
+                recommended_action=Action.CONTINUE_WITH_ANNOTATION,
+            ),
+        ],
+        events=[driver_event_1, driver_event_2],
+        action=Action.CONTINUE_WITH_ANNOTATION,
+        diagnostics=Diagnostics(token_count=5),
+        decision=Decision(
+            action=Action.CONTINUE_WITH_ANNOTATION,
+            rationale="Policy preset balanced selected continue_with_annotation based on segment events.",
+        ),
+    )
 
 
 def test_pretty_summary_includes_explanatory_event_thresholds():
@@ -184,6 +241,15 @@ def test_pretty_surfaces_capability_gaps_before_segments():
     assert "Selected-token logprobs are available, but top-k diagnostics are unavailable." in rendered
     assert "router removed top-k support" in rendered
     assert rendered.index("Capability Gaps") < rendered.index("Segments")
+
+
+def test_pretty_clarifies_when_multiple_segments_share_the_decision():
+    rendered = _multi_driver_result().pretty()
+
+    assert "decision_driving_segment: representative segment:" in rendered
+    assert "2 matching drivers" in rendered
+    assert "decision_driver_type: informational prose spans" in rendered
+    assert "The first line shows a representative driver; the list below shows all matching drivers." in rendered
 
 
 def test_rich_render_requires_optional_dependency():
@@ -297,6 +363,11 @@ def test_rich_renderable_uses_shared_sections_with_fake_rich(monkeypatch):
     assert "tool argument value" in rendered
     assert "code=ARGUMENT_VALUE_UNCERTAIN" in rendered
     assert "thresholds" in rendered
+
+    multi_driver_rendered = str(_multi_driver_result().rich_renderable())
+    assert "representative segment:" in multi_driver_rendered
+    assert "2 matching drivers" in multi_driver_rendered
+    assert "informational prose spans" in multi_driver_rendered
 
     console = FakeConsole()
     result.rich_console_render(console=console)
