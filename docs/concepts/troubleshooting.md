@@ -10,6 +10,8 @@ Primary NLL scoring still works with selected-token logprobs only. AgentUQ emits
 
 If you want earlier event emission on borderline steps, set `tolerance="strict"` or override specific threshold values. If you want different responses to the same events, change `policy`.
 
+For symptom-based tuning guidance, see [Tolerance](tolerance.md) and [Policies](policies.md).
+
 ## Canonical mode requested on sampled runs
 
 AgentUQ downgrades to realized mode with `TEMPERATURE_MISMATCH` when degraded mode is allowed, or raises `UnsupportedForCanonicalModeError` when fail-loud behavior is configured. Use explicit greedy settings: `temperature=0`, `top_p=1`, and deterministic metadata.
@@ -25,6 +27,8 @@ Do not use parameter dropping in UQ-critical paths. Pass `drop_params=False` and
 ## Provider returned structure but no token details
 
 Structured outputs without token logprobs are still useful for segmentation, but AgentUQ treats the run as capability tier `none` or degraded depending on config.
+
+For a surface-by-surface view of what each provider or framework currently exposes, see [Provider and framework capabilities](provider_capabilities.md).
 
 ## Live tests are being skipped
 

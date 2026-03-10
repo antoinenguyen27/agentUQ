@@ -280,6 +280,8 @@ Default `summary` output includes:
 - When a final answer contains embedded literal spans such as SQL or browser DSL, AgentUQ emits residual prose slices around those spans rather than one wrapper segment for the whole answer.
 - Short inline literals that are explicit but not recognized as action-bearing stay inside the surrounding prose segment instead of becoming standalone text slices.
 
+See [Reading results](docs/concepts/reading_results.md) for a fuller guide to metrics, events, thresholds, and what comparisons are actually meaningful.
+
 ## Configuration model
 
 - `policy`: action behavior after events are emitted
@@ -303,6 +305,8 @@ Reach for the knobs in this order:
 - `tolerance` when you want events to fire earlier or later
 - `thresholds` when you need numeric fine-tuning of one metric or priority class
 - `custom_rules` when the defaults are mostly right but a specific segment/event combination needs a different action
+
+For the exact public objects and fields, see [Public API](docs/concepts/public_api.md). For symptom-based tuning, see [Tolerance](docs/concepts/tolerance.md).
 
 ## Capability tiers
 
@@ -339,6 +343,9 @@ Default behavior is fail-loud on missing selected-token logprobs. Top-k gaps deg
 - [OpenAI Agents quickstart](docs/quickstarts/openai_agents.md)
 - [Capability tiers](docs/concepts/capability_tiers.md)
 - [Canonical vs realized](docs/concepts/canonical_vs_realized.md)
+- [Public API](docs/concepts/public_api.md)
+- [Provider and framework capabilities](docs/concepts/provider_capabilities.md)
+- [Reading results](docs/concepts/reading_results.md)
 - [Segmentation](docs/concepts/segmentation.md)
 - [Research grounding](docs/concepts/research_grounding.md)
 - [Acting on decisions](docs/concepts/acting_on_decisions.md)

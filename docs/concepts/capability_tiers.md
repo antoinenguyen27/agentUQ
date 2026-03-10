@@ -14,3 +14,4 @@ The capability decision uses three inputs in order:
 
 This keeps the runtime honest when a gateway accepts a parameter but does not actually return the requested structure.
 
+For provider- and framework-specific expectations, see [Provider and framework capabilities](provider_capabilities.md).

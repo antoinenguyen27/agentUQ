@@ -97,4 +97,5 @@ Segments
 - Responses: include `message.output_text.logprobs`; do not assume function-call items carry token logprobs.
 - OpenAI-family tool calls are captured structurally, but tool-name/tool-argument segments require explicit token grounding rather than incidental mentions in assistant prose.
 - For the full runtime loop and customization model, see [Acting on decisions](../concepts/acting_on_decisions.md) and [Policies](../concepts/policies.md).
+- For capability expectations by provider or framework, see [Provider and framework capabilities](../concepts/provider_capabilities.md).
 - This example can be adapted into a local live smoke test, but AgentUQ does not run provider-backed tests in required OSS CI.

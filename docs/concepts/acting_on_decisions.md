@@ -71,6 +71,59 @@ elif decision.action == Action.BLOCK_EXECUTION:
 - `escalate_to_human`, `emit_webhook`, `custom`
   Reserved for workflows that want custom dispatch after `Decision` is returned. These are typically produced via `custom_rules` rather than the built-in preset logic.
 
+## Intervention recipes by segment type
+
+### SQL and executable query text
+
+Prefer verification before execution.
+
+Good responses:
+
+- run `EXPLAIN`
+- lint or parse the query
+- execute against a read-only or dry-run environment
+- ask for confirmation if the query remains risky after validation
+
+Use whole-step retry only when the SQL head or surrounding structure is unstable, not just one clause.
+
+### Browser actions, selectors, URLs, and paths
+
+Prefer existence checks over blind retries.
+
+Good responses:
+
+- verify that a selector resolves before clicking
+- verify that a URL is allowed and syntactically valid
+- verify that a path points to an expected workspace or sandbox location
+- ask for confirmation before destructive or external navigation steps
+
+If the action head itself looks unstable, retry the step with tighter constraints.
+
+### Tool arguments and JSON leaves
+
+Prefer structured repair first.
+
+Good responses:
+
+- regenerate only the invalid or risky field
+- re-run schema validation
+- retry the whole step only if multiple fields are unstable or the schema keeps failing
+
+This is often the highest-leverage use of `regenerate_segment`.
+
+### Prose answers
+
+Treat prose differently from executable spans.
+
+Good responses:
+
+- annotate the trace when only prose is mildly uncertain
+- retry with stronger instructions when the workflow is high-trust
+- retrieve more context and rerun when the problem is likely missing grounding rather than output format instability
+- hand off to a stronger verifier when factual accuracy matters more than low-latency completion
+
+This is where "retrieve more" and "reprompt" are usually better first responses than blocking outright.
+
 ## Picking the right implementation strategy
 
 The right response depends on what your framework can actually do.
@@ -92,6 +145,14 @@ Map both `regenerate_segment` and `retry_step_with_constraints` to a full retry,
 
 - `regenerate_segment`: retry with instructions that preserve the rest of the structure
 - `retry_step_with_constraints`: retry with more global constraints because the action head itself looked unstable
+
+Common constraints to add on retry:
+
+- lower temperature
+- restate the schema or field contract
+- pin the required tool or output format
+- remind the model not to include explanatory prose in a structured field
+- add retrieval results or authoritative context before retrying
 
 ### If the step has side effects
 
@@ -118,16 +179,12 @@ if result.decision.action == Action.DRY_RUN_VERIFY:
     explain_sql_before_running(result)
 ```
 
-### Wrapped OpenAI client
-
-`UQWrappedOpenAI` already returns both the response and the computed decision.
+Another common pattern for factual or retrieval-backed workflows:
 
 ```python
-wrapped = UQWrappedOpenAI(client, UQConfig(policy="conservative", tolerance="strict"))
-wrapped_result = wrapped.responses.create(...)
-
-if wrapped_result.decision.action == Action.ASK_USER_CONFIRMATION:
-    interrupt_before_side_effect(wrapped_result.result)
+if result.decision.action in {Action.RETRY_STEP, Action.RETRY_STEP_WITH_CONSTRAINTS}:
+    docs = retrieve_more_context(query)
+    rerun_with_grounding(docs)
 ```
 
 ### LangGraph / LangChain

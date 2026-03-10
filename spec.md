@@ -1327,13 +1327,6 @@ result = analyzer.analyze_step(record, capability_report)
 decision = result.decision
 ```
 
-or a wrapper form such as:
-
-```python
-client = UQWrappedOpenAI(client, config)
-model = UQMiddleware(model, config)
-```
-
 Unacceptable public surface:
 
 * deep subclass hierarchies,
@@ -1397,30 +1390,12 @@ class CapabilityProbe(Protocol):
     def probe(self, model: str, **kwargs) -> CapabilityProbeResult: ...
 ```
 
-### 13.4 Framework wrapper APIs
-
-#### OpenAI
-
-```python
-client = UQWrappedOpenAI(base_client, uq=config)
-```
+### 13.4 Framework integration APIs
 
 #### LangChain / LangGraph
 
 ```python
 wrapped_model = UQMiddleware(chat_model, uq=config)
-```
-
-#### LiteLLM
-
-```python
-wrapped_completion = UQLiteLLM(config)
-```
-
-#### OpenRouter
-
-```python
-wrapped_router = UQOpenRouter(config)
 ```
 
 #### Low-level direct usage
@@ -1638,7 +1613,6 @@ src/
     integrations/
       langchain_middleware.py
       langgraph_hook.py
-      openai_wrappers.py
     docs_assets/
       snippets/
         openai.py
@@ -1846,6 +1820,9 @@ Rules:
 
 Required concept docs:
 
+* `public_api.md`
+* `provider_capabilities.md`
+* `reading_results.md`
 * `capability_tiers.md`
 * `canonical_vs_realized.md`
 * `acting_on_decisions.md`

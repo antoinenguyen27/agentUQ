@@ -10,7 +10,6 @@ from uq_runtime.adapters.together import TogetherAdapter
 from uq_runtime.analysis.analyzer import Analyzer
 from uq_runtime.integrations.langchain_middleware import UQMiddleware, analyze_after_model_call, guard_before_tool_execution
 from uq_runtime.integrations.langgraph_hook import enrich_graph_state, should_interrupt_before_tool
-from uq_runtime.integrations.openai_wrappers import UQWrappedOpenAI
 from uq_runtime.request_params import request_params
 from uq_runtime.schemas.config import UQConfig
 from uq_runtime.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
@@ -372,29 +371,3 @@ def test_langgraph_state_helpers_interrupt_for_grounded_tool_segments():
     state = {"uq_result": result.model_dump(mode="json")}
     assert should_interrupt_before_tool("weather_lookup", state) is True
     assert should_interrupt_before_tool("other_tool", state) is False
-
-
-class DummyResponsesClient:
-    def create(self, **_kwargs):
-        return _responses_payload()
-
-
-class DummyChatCompletionsClient:
-    def create(self, **_kwargs):
-        return _chat_response()
-
-
-class DummyBaseClient:
-    def __init__(self):
-        self.responses = DummyResponsesClient()
-        self.chat = type("Chat", (), {"completions": DummyChatCompletionsClient()})()
-
-
-def test_openai_wrapper_returns_response_result_and_decision():
-    wrapped = UQWrappedOpenAI(DummyBaseClient(), UQConfig())
-    response_call = wrapped.responses.create(model="gpt-4.1-mini", include=["message.output_text.logprobs"], top_logprobs=2, temperature=0.0, top_p=1.0)
-    chat_call = wrapped.chat.completions.create(model="gpt-4o-mini", logprobs=True, top_logprobs=2, temperature=0.0, top_p=1.0)
-    assert response_call.result.decision is not None
-    assert chat_call.result.decision is not None
-    assert response_call.decision.action == response_call.result.action
-    assert chat_call.decision.action == chat_call.result.action
