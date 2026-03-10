@@ -94,6 +94,7 @@ def test_pretty_summary_includes_explanatory_event_thresholds():
     assert "Risk Summary" in rendered
     assert "decision_driving_segment:" in rendered
     assert "decision_driving_segments:" in rendered
+    assert "decision_driver_preview:" in rendered
     assert "decision_note: The recommended action comes from the segment events and policy mapping in this section." in rendered
     assert "capability: full" in rendered
     assert "Segments" in rendered
@@ -290,6 +291,7 @@ def test_rich_renderable_uses_shared_sections_with_fake_rich(monkeypatch):
     assert "Risk Summary" in rendered
     assert "whole response score" in rendered
     assert "decision driving segment" in rendered
+    assert "decision driver preview" in rendered
     assert "decision note" in rendered
     assert "Segments" in rendered
     assert "tool argument value" in rendered

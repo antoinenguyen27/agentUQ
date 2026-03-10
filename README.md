@@ -126,19 +126,21 @@ result.rich_console_render()
 Default `summary` output includes:
 
 - analysis mode and mode reason
-- aggregate primary score and score type
+- whole-response score and score type
 - overall action and rationale
-- top-risk segment and risk basis
+- decision-driving segment and its basis
 - capability summary and warnings
 - interesting segments only
 - triggered events with explanatory threshold comparisons when available
 
 ## How to read results
 
-- `aggregate_primary_score` is length-dependent and summarizes the full emitted path.
-- `top_risk` and `risk_basis` tell you which segment actually drove the operational recommendation.
+- `whole_response_score` is length-dependent and summarizes the full emitted path.
+- `decision_driving_segment` and `decision_driving_segments` tell you which segment actually drove the operational recommendation.
 - Treat prose-only warnings as annotation signals unless they outrank or coincide with action-bearing spans.
 - Heuristic action-bearing spans come from explicit literal contexts such as structured blocks, fenced or inline code, exact ReAct labels, standalone snippet lines, and short snippet-intro tails like `Query: ...`.
+- When a final answer contains embedded literal spans such as SQL or browser DSL, AgentUQ emits residual prose slices around those spans rather than one wrapper segment for the whole answer.
+- Short inline literals that are explicit but not recognized as action-bearing stay inside the surrounding prose segment instead of becoming standalone text slices.
 
 ## Configuration model
 

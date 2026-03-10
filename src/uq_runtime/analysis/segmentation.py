@@ -791,13 +791,13 @@ class _SegmentationPlanner:
     def process(self, root: ParentBlock) -> list[SegmentSpec]:
         self.process_node(root)
         if not self.segments and self.raw_text.strip():
-            self.emit_fallback("unknown_text", self.raw_text, (0, len(self.raw_text)), {"segment_source": "fallback"})
+            self.emit_fallback("unknown_text", self.raw_text, (0, len(self.raw_text)), {"segment_source": "fallback"}, coalesce_fallback=False)
         self.segments.sort(key=lambda segment: (segment.char_span[0], -(segment.char_span[1] - segment.char_span[0]), segment.id))
         return self.segments
 
     def process_node(self, node: ParentBlock) -> None:
         if node.kind == "root":
-            self.process_child_gaps(node, fallback_kind="unknown_text", allow_react=True)
+            self.process_child_gaps(node, fallback_kind="unknown_text", allow_react=True, coalesce_fallback=False)
             return
         if node.kind == "tool_call":
             self.segment_tool_node(node)
@@ -821,14 +821,24 @@ class _SegmentationPlanner:
             self.segment_react_action_input(node)
             return
         if node.kind == "react_action":
-            self.process_text_region(node.text, node.char_span, fallback_kind="unknown_text", allow_react=False, metadata=node.metadata)
+            self.process_text_region(
+                node.text,
+                node.char_span,
+                fallback_kind="unknown_text",
+                allow_react=False,
+                metadata=node.metadata,
+                coalesce_fallback=False,
+            )
             return
-        if node.emit_kind is not None:
-            self.append_segment(node.emit_kind, node.text, node.char_span, dict(node.metadata))
-        fallback_kind = None if node.emit_kind is not None else "unknown_text"
-        self.process_child_gaps(node, fallback_kind=fallback_kind, allow_react="react_label" not in node.metadata)
+        fallback_kind = node.emit_kind if node.emit_kind is not None else "unknown_text"
+        self.process_child_gaps(
+            node,
+            fallback_kind=fallback_kind,
+            allow_react="react_label" not in node.metadata,
+            coalesce_fallback=node.emit_kind is not None,
+        )
 
-    def process_child_gaps(self, node: ParentBlock, fallback_kind: str | None, allow_react: bool) -> None:
+    def process_child_gaps(self, node: ParentBlock, fallback_kind: str | None, allow_react: bool, coalesce_fallback: bool) -> None:
         cursor = node.char_span[0]
         for child in sorted(node.children, key=lambda item: (item.char_span[0], -(item.char_span[1] - item.char_span[0]))):
             if cursor < child.char_span[0]:
@@ -838,6 +848,7 @@ class _SegmentationPlanner:
                     fallback_kind=fallback_kind,
                     allow_react=allow_react,
                     metadata=dict(node.metadata),
+                    coalesce_fallback=coalesce_fallback,
                 )
             self.process_node(child)
             cursor = max(cursor, child.char_span[1])
@@ -848,6 +859,7 @@ class _SegmentationPlanner:
                 fallback_kind=fallback_kind,
                 allow_react=allow_react,
                 metadata=dict(node.metadata),
+                coalesce_fallback=coalesce_fallback,
             )
 
     def process_text_region(
@@ -857,6 +869,7 @@ class _SegmentationPlanner:
         fallback_kind: str | None,
         allow_react: bool,
         metadata: dict[str, Any],
+        coalesce_fallback: bool,
     ) -> None:
         if not text.strip():
             return
@@ -872,6 +885,7 @@ class _SegmentationPlanner:
                             fallback_kind=fallback_kind,
                             allow_react=False,
                             metadata=metadata,
+                            coalesce_fallback=coalesce_fallback,
                         )
                     self.process_node(self.react_parent(block, metadata))
                     cursor = block.char_span[1]
@@ -882,6 +896,7 @@ class _SegmentationPlanner:
                         fallback_kind=fallback_kind,
                         allow_react=False,
                         metadata=metadata,
+                        coalesce_fallback=coalesce_fallback,
                     )
                 return
         if self.config.enable_json_leaf_segmentation and _looks_like_json(text):
@@ -910,6 +925,7 @@ class _SegmentationPlanner:
                             fallback_kind=fallback_kind,
                             allow_react=False,
                             metadata=metadata,
+                            coalesce_fallback=coalesce_fallback,
                         )
                     inner_text = self.raw_text[inner_span[0] : inner_span[1]]
                     if inner_text.strip():
@@ -925,6 +941,14 @@ class _SegmentationPlanner:
                         parent = _literal_parent(candidate, {**metadata, "language": language.strip().lower()}, self.config)
                         if parent is not None:
                             self.process_node(parent)
+                        elif fallback_kind is not None:
+                            self.emit_fallback(
+                                fallback_kind,
+                                self.raw_text[fenced_span[0] : fenced_span[1]],
+                                fenced_span,
+                                dict(metadata),
+                                coalesce_fallback=True,
+                            )
                     cursor = fenced_span[1]
                 if cursor < span[1]:
                     self.process_text_region(
@@ -933,12 +957,18 @@ class _SegmentationPlanner:
                         fallback_kind=fallback_kind,
                         allow_react=False,
                         metadata=metadata,
+                        coalesce_fallback=coalesce_fallback,
                     )
                 return
         inline_code = _inline_code_candidates(text, span)
-        if inline_code:
+        recognized_inline: list[tuple[LiteralCandidate, ParentBlock]] = []
+        for candidate in inline_code:
+            parent = _literal_parent(candidate, metadata, self.config)
+            if parent is not None:
+                recognized_inline.append((candidate, parent))
+        if recognized_inline:
             cursor = span[0]
-            for candidate in inline_code:
+            for candidate, parent in recognized_inline:
                 if cursor < candidate.cover_span[0]:
                     self.process_text_region(
                         self.raw_text[cursor : candidate.cover_span[0]],
@@ -946,10 +976,9 @@ class _SegmentationPlanner:
                         fallback_kind=fallback_kind,
                         allow_react=False,
                         metadata=metadata,
+                        coalesce_fallback=coalesce_fallback,
                     )
-                parent = _literal_parent(candidate, metadata, self.config)
-                if parent is not None:
-                    self.process_node(parent)
+                self.process_node(parent)
                 cursor = candidate.cover_span[1]
             if cursor < span[1]:
                 self.process_text_region(
@@ -958,6 +987,7 @@ class _SegmentationPlanner:
                     fallback_kind=fallback_kind,
                     allow_react=False,
                     metadata=metadata,
+                    coalesce_fallback=coalesce_fallback,
                 )
             return
         candidates = _line_candidates(text, span[0], self.config)
@@ -971,6 +1001,7 @@ class _SegmentationPlanner:
                         fallback_kind=fallback_kind,
                         allow_react=False,
                         metadata=metadata,
+                        coalesce_fallback=coalesce_fallback,
                     )
                 self.process_node(
                     ParentBlock(
@@ -989,27 +1020,37 @@ class _SegmentationPlanner:
                     fallback_kind=fallback_kind,
                     allow_react=False,
                     metadata=metadata,
+                    coalesce_fallback=coalesce_fallback,
                 )
             return
         if fallback_kind is not None:
-            self.emit_fallback(fallback_kind, text, span, {**metadata, "segment_source": metadata.get("segment_source", "fallback")})
+            self.emit_fallback(
+                fallback_kind,
+                text,
+                span,
+                {**metadata, "segment_source": metadata.get("segment_source", "fallback")},
+                coalesce_fallback=coalesce_fallback,
+            )
 
-    def emit_fallback(self, kind: str, text: str, span: tuple[int, int], metadata: dict[str, Any]) -> None:
+    def emit_fallback(self, kind: str, text: str, span: tuple[int, int], metadata: dict[str, Any], coalesce_fallback: bool) -> None:
+        if coalesce_fallback or not self.config.fallback_line_split:
+            stripped_text, stripped_span = _strip_span(text, span)
+            if stripped_text:
+                self.append_segment(kind, stripped_text, stripped_span, dict(metadata))
+            return
         if self.config.fallback_line_split:
             cursor = span[0]
             for line in text.splitlines(keepends=True):
-                line_start = cursor
+                line_span = (cursor, cursor + len(line))
                 cursor += len(line)
-                stripped = line.strip()
-                if not stripped:
+                stripped_text, stripped_span = _strip_span(line, line_span)
+                if not stripped_text:
                     continue
-                self.append_segment(kind, stripped, (line_start, cursor), dict(metadata))
-            if cursor < span[1]:
-                stripped = self.raw_text[cursor : span[1]].strip()
-                if stripped:
-                    self.append_segment(kind, stripped, (cursor, span[1]), dict(metadata))
+                self.append_segment(kind, stripped_text, stripped_span, dict(metadata))
             return
-        self.append_segment(kind, text, span, dict(metadata))
+        stripped_text, stripped_span = _strip_span(text, span)
+        if stripped_text:
+            self.append_segment(kind, stripped_text, stripped_span, dict(metadata))
 
     def react_parent(self, block: ReactBlock, metadata: dict[str, Any]) -> ParentBlock:
         block_metadata = {**metadata, "segment_source": "heuristic", "react_label": block.label}

@@ -25,7 +25,7 @@ SEGMENT_LABELS = {
     "json_leaf": "JSON value",
     "browser_text_value": "browser text value",
     "code_statement": "code statement",
-    "final_answer_text": "final answer",
+    "final_answer_text": "final answer prose",
     "reasoning_text": "reasoning text",
     "unknown_text": "plain text",
 }
@@ -144,6 +144,15 @@ def _action_rank(action: Action) -> int:
     return order[action]
 
 
+def _severity_rank(segment: SegmentResult) -> int:
+    order = {"info": 0, "warn": 1, "high": 2, "critical": 3}
+    return max((order[event.severity.value] for event in segment.events), default=0)
+
+
+def _segment_token_width(segment: SegmentResult) -> int:
+    return max(1, segment.token_span[1] - segment.token_span[0])
+
+
 def _top_risk_segments(result: UQResult) -> list[SegmentResult]:
     if not result.segments:
         return []
@@ -151,7 +160,12 @@ def _top_risk_segments(result: UQResult) -> list[SegmentResult]:
     risky = [segment for segment in result.segments if _action_rank(segment.recommended_action) == max_rank]
     return sorted(
         risky,
-        key=lambda segment: (_action_rank(segment.recommended_action), len(segment.events), segment.metrics.max_surprise),
+        key=lambda segment: (
+            _severity_rank(segment),
+            len(segment.events),
+            -_segment_token_width(segment),
+            segment.metrics.max_surprise,
+        ),
         reverse=True,
     )
 
@@ -161,7 +175,7 @@ def _risk_driver_label(result: UQResult) -> str:
     if not drivers:
         return "none"
     if all(segment.priority in {"informational", "low_priority"} for segment in drivers):
-        return "informational prose only"
+        return "informational prose span(s)"
     return "action-bearing segment(s)"
 
 
@@ -170,6 +184,13 @@ def _risk_drivers(result: UQResult) -> str:
     if not drivers:
         return "none"
     return ", ".join(f"{_friendly_segment_label(segment.kind)} ({segment.id})" for segment in drivers)
+
+
+def _risk_driver_preview(result: UQResult) -> str:
+    drivers = [segment for segment in _top_risk_segments(result) if segment.recommended_action == result.action]
+    if not drivers:
+        return "n/a"
+    return _preview(drivers[0].text)
 
 
 def _event_detail(_segment: SegmentResult, event: Event, _result: UQResult) -> str | None:
@@ -396,6 +417,7 @@ def build_display_model(
         ),
         ("decision_driver_type", _risk_driver_label(result)),
         ("decision_driving_segments", _risk_drivers(result)),
+        ("decision_driver_preview", _risk_driver_preview(result)),
         ("decision_note", "The recommended action comes from the segment events and policy mapping in this section."),
     ]
 

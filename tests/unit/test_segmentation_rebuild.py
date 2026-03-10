@@ -273,7 +273,82 @@ def test_explanatory_final_answer_only_emits_real_sql_clauses():
 
     segments = segment_record(record, SegmentationConfig())
 
+    assert [segment.text for segment in segments if segment.kind == "final_answer_text"] == [
+        "A query to select all users from a database is a command written in SQL."
+    ]
     assert [segment.text for segment in segments if segment.kind == "sql_clause"] == ["SELECT *", "FROM users;"]
+
+
+def test_final_answer_prose_is_emitted_as_residual_slices_around_sql():
+    raw_text = "Certainly!\n\nExplain what it does first.\n\nSELECT *\nFROM users;\n\nIt returns all rows."
+    record = _record(
+        raw_text,
+        [StructuredBlock(type="output_text", text=raw_text, char_start=0, char_end=len(raw_text), metadata={"role": "final"})],
+    )
+
+    segments = segment_record(record, SegmentationConfig())
+
+    assert [segment.text for segment in segments if segment.kind == "final_answer_text"] == [
+        "Certainly!\n\nExplain what it does first.",
+        "It returns all rows.",
+    ]
+    assert [segment.text for segment in segments if segment.kind == "sql_clause"] == ["SELECT *", "FROM users;"]
+    assert all("SELECT" not in segment.text for segment in segments if segment.kind == "final_answer_text")
+
+
+def test_unclassified_inline_code_in_final_answer_falls_back_to_text():
+    raw_text = "Use `users` as the table name."
+    record = _record(
+        raw_text,
+        [StructuredBlock(type="output_text", text=raw_text, char_start=0, char_end=len(raw_text), metadata={"role": "final"})],
+    )
+
+    segments = segment_record(record, SegmentationConfig())
+
+    assert {segment.kind for segment in segments} == {"final_answer_text"}
+    assert [segment.text for segment in segments] == [raw_text]
+
+
+def test_unclassified_fenced_block_in_final_answer_falls_back_to_text():
+    raw_text = "Example:\n```custom\nalpha beta\n```\nDone."
+    record = _record(
+        raw_text,
+        [StructuredBlock(type="output_text", text=raw_text, char_start=0, char_end=len(raw_text), metadata={"role": "final"})],
+    )
+
+    segments = segment_record(record, SegmentationConfig())
+
+    assert {segment.kind for segment in segments} == {"final_answer_text"}
+    assert any(segment.text.startswith("```custom") for segment in segments)
+    assert any(segment.text == "Done." for segment in segments)
+
+
+def test_inline_code_explanations_are_absorbed_into_single_prose_segment():
+    raw_text = "The table is `users`, and the query uses `SELECT` with `FROM users`."
+    record = _record(
+        raw_text,
+        [StructuredBlock(type="output_text", text=raw_text, char_start=0, char_end=len(raw_text), metadata={"role": "final"})],
+    )
+
+    segments = segment_record(record, SegmentationConfig())
+
+    assert [segment.kind for segment in segments] == ["final_answer_text"]
+    assert segments[0].text == raw_text
+
+
+def test_browser_action_keeps_explanatory_inline_literal_with_surrounding_prose():
+    segments = segment_record(_record('Run `click(selector="#submit")`. The selector is `#submit`.'), SegmentationConfig())
+
+    assert [segment.kind for segment in segments] == ["unknown_text", "browser_action", "browser_selector", "unknown_text"]
+    assert segments[-1].text.endswith('The selector is `#submit`.')
+
+
+def test_shell_command_keeps_explanatory_inline_flag_with_surrounding_prose():
+    segments = segment_record(_record('Run `$ curl https://example.com/api`. Use `-H` for headers.'), SegmentationConfig())
+
+    assert {segment.kind for segment in segments} >= {"identifier", "url", "unknown_text"}
+    assert all(segment.text != "`-H`" for segment in segments)
+    assert any(segment.kind == "unknown_text" and segment.text.endswith('Use `-H` for headers.') for segment in segments)
 
 
 def test_analysis_keeps_sql_risk_on_real_query_segments_only():
