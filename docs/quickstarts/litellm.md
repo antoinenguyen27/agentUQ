@@ -48,14 +48,14 @@ print(result.pretty())
 ```text
 Summary
   mode: canonical
-  reason: auto-selected canonical mode from strictly greedy metadata
-  score: 1.204 g_nll
+  reason: auto-selected canonical mode from strict greedy parameter inference
+  aggregate_primary_score: 1.204 g_nll
   action: continue
   rationale: Policy preset balanced selected continue based on segment events.
   capability: full
 
 Segments
-  json_leaf [informational] -> continue
+  json_leaf [important_action] -> continue
     text: Paris
     metrics: score=0.411 avg_surprise=0.205 max_surprise=0.310 mean_entropy=0.622
     events: none

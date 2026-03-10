@@ -37,8 +37,8 @@ print(f"should_interrupt_before_tool('weather_lookup'): {should_interrupt_before
 ```text
 Summary
   mode: canonical
-  reason: auto-selected canonical mode from strictly greedy metadata
-  score: 0.025 g_nll
+  reason: auto-selected canonical mode from strict greedy parameter inference
+  aggregate_primary_score: 0.025 g_nll
   action: continue
   rationale: Policy preset conservative selected continue based on segment events.
   capability: full

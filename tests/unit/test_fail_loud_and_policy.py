@@ -177,6 +177,33 @@ def test_policy_preset_diff_for_browser_selector_risk():
     assert aggressive_selector.recommended_action == Action.REGENERATE_SEGMENT
 
 
+def test_balanced_policy_treats_url_as_policy_bearing():
+    record = GenerationRecord(
+        provider="openai",
+        transport="direct_api",
+        model="gpt-test",
+        temperature=0.4,
+        top_p=1.0,
+        raw_text='navigate(url="https://example.com")',
+        selected_tokens=["navigate", "(", "url", "=", '"https://example.com"', ")"],
+        selected_logprobs=[-0.3, -0.1, -0.1, -0.1, -4.2, -0.1],
+        top_logprobs=[
+            [TopToken(token="navigate", logprob=-0.3), TopToken(token="click", logprob=-0.4)],
+            [TopToken(token="(", logprob=-0.1), TopToken(token="[", logprob=-2.0)],
+            [TopToken(token="url", logprob=-0.1), TopToken(token="href", logprob=-1.0)],
+            [TopToken(token="=", logprob=-0.1), TopToken(token=":", logprob=-2.0)],
+            [TopToken(token='"https://example.com"', logprob=-4.2), TopToken(token='"https://safe.example.com"', logprob=-4.3)],
+            [TopToken(token=")", logprob=-0.1), TopToken(token="]", logprob=-2.0)],
+        ],
+        metadata={"request_logprobs": True, "request_topk": 2, "deterministic": False},
+    )
+    cap = CapabilityReport(selected_token_logprobs=True, topk_logprobs=True, topk_k=2, request_attempted_logprobs=True, request_attempted_topk=2)
+    result = Analyzer(UQConfig(mode="realized", policy="balanced")).analyze_step(record, cap)
+
+    url_segment = next(segment for segment in result.segments if segment.kind == "url")
+    assert url_segment.recommended_action == Action.ASK_USER_CONFIRMATION
+
+
 def test_conservative_policy_retries_risky_final_prose():
     record = GenerationRecord(
         provider="openai",

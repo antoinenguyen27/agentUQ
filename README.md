@@ -114,11 +114,18 @@ print(result.pretty(verbosity="debug", show_thresholds="all"))
 Default `summary` output includes:
 
 - analysis mode and mode reason
-- raw primary score and score type
+- aggregate primary score and score type
 - overall action and rationale
+- top-risk segment and risk basis
 - capability summary and warnings
 - interesting segments only
 - triggered events with explanatory threshold comparisons when available
+
+## How to read results
+
+- `aggregate_primary_score` is length-dependent and summarizes the full emitted path.
+- `top_risk` and `risk_basis` tell you which segment actually drove the operational recommendation.
+- Treat prose-only warnings as annotation signals unless they outrank or coincide with action-bearing spans.
 
 ## Configuration model
 

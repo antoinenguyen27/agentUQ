@@ -56,8 +56,8 @@ For a fuller diagnostic view, use `result.pretty(verbosity="debug", show_thresho
 ```text
 Summary
   mode: canonical
-  reason: auto-selected canonical mode from strictly greedy metadata
-  score: 0.021 g_nll
+  reason: auto-selected canonical mode from strict greedy parameter inference
+  aggregate_primary_score: 0.021 g_nll
   action: continue
   rationale: Policy preset balanced selected continue based on segment events.
   capability: full

@@ -53,8 +53,8 @@ print(result.pretty())
 ```text
 Summary
   mode: canonical
-  reason: auto-selected canonical mode from strictly greedy metadata
-  score: 0.028 g_nll
+  reason: auto-selected canonical mode from strict greedy parameter inference
+  aggregate_primary_score: 0.028 g_nll
   action: continue
   rationale: Policy preset conservative selected continue based on segment events.
   capability: full

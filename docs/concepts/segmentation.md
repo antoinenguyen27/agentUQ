@@ -9,13 +9,14 @@ Whole-response scoring is too blunt for agent systems. AgentUQ segments generati
 - JSON leaves by JSONPath
 - ReAct blocks such as `Action:` and `Action Input:`
 - Browser DSL commands and arguments
+- URLs, paths, and shell-oriented spans in supported command contexts
 - SQL clauses
 - Code statements
 - Fallback text spans
 
 ## Priority classes
 
-- `critical_action`: tool names, selectors, URLs, IDs, SQL clauses, destructive shell values
+- `critical_action`: tool names, selectors, URLs, IDs, action-bearing paths, SQL clauses, shell flags/values
 - `important_action`: tool leaves, JSON leaves, browser text values, code statements
 - `informational`: final answer prose
 - `low_priority`: reasoning text

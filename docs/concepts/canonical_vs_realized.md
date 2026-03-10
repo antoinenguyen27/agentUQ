@@ -12,6 +12,8 @@ Recommended conditions:
 - `top_p == 1`
 - step metadata marks the call as deterministic
 
+Current implementation will also auto-select canonical mode when strict greedy parameters are present and deterministic metadata is absent. The rendered mode reason distinguishes explicit metadata from parameter inference.
+
 ## Realized mode
 
 Realized mode uses realized-path NLL on the actual emitted sequence. This is the correct mode when decoding was sampled or when runtime metadata is unknown.

@@ -59,6 +59,45 @@ def test_fenced_code_is_scoped_to_code_statements():
     assert all(segment.priority == "important_action" for segment in code_segments)
 
 
+def test_fenced_sql_is_scoped_to_sql_clauses():
+    raw_text = "Summary:\n```sql\nSELECT email\nFROM users\nWHERE active = true\nLIMIT 10\n```\nDone."
+    record = _record(
+        raw_text,
+        [StructuredBlock(type="output_text", text=raw_text, char_start=0, char_end=len(raw_text), metadata={"role": "final"})],
+    )
+
+    segments = segment_record(record, SegmentationConfig())
+
+    assert "code_statement" not in {segment.kind for segment in segments}
+    assert [segment.kind for segment in segments if segment.kind == "sql_clause"] == ["sql_clause", "sql_clause", "sql_clause", "sql_clause"]
+    assert any(segment.text == "WHERE active = true" for segment in segments if segment.kind == "sql_clause")
+
+
+def test_fenced_json_is_scoped_to_json_leaves():
+    raw_text = 'Summary:\n```json\n{"city":"Paris","count":2}\n```\nDone.'
+    record = _record(
+        raw_text,
+        [StructuredBlock(type="output_text", text=raw_text, char_start=0, char_end=len(raw_text), metadata={"role": "final"})],
+    )
+
+    segments = segment_record(record, SegmentationConfig())
+
+    assert {segment.kind for segment in segments if segment.kind != "final_answer_text"} == {"json_leaf"}
+
+
+def test_fenced_shell_emits_identifier_flag_path_and_value_segments():
+    raw_text = "```bash\ncurl --request POST https://example.com/api ./payload.json\n```"
+    record = _record(raw_text)
+
+    segments = segment_record(record, SegmentationConfig())
+    kinds = {segment.kind for segment in segments}
+
+    assert "identifier" in kinds
+    assert "shell_flag" in kinds
+    assert "url" in kinds
+    assert "path" in kinds
+
+
 def test_grounded_tool_call_only_emits_tool_segments():
     raw_text = 'weather{"city":"Paris"}'
     record = _record(
@@ -104,6 +143,56 @@ def test_browser_and_sql_are_scoped_without_generic_code_duplicates():
     assert {segment.kind for segment in browser_segments} == {"browser_action", "browser_selector"}
     assert "code_statement" not in {segment.kind for segment in sql_segments}
     assert {segment.kind for segment in sql_segments} == {"sql_clause"}
+
+
+def test_inline_sql_is_isolated_from_same_line_prose():
+    segments = segment_record(_record("Use this query: SELECT * FROM users;"), SegmentationConfig())
+
+    assert [segment.kind for segment in segments] == ["unknown_text", "sql_clause", "sql_clause"]
+    assert segments[1].text == "SELECT *"
+
+
+def test_markdown_bullet_sql_is_isolated_from_bullet_text():
+    segments = segment_record(_record("- Query: SELECT * FROM users;"), SegmentationConfig())
+
+    assert [segment.kind for segment in segments] == ["unknown_text", "sql_clause", "sql_clause"]
+
+
+def test_inline_browser_actions_are_extracted_from_prose():
+    segments = segment_record(_record('First explain it. Then run click(selector="#submit") and navigate(url="https://example.com").'), SegmentationConfig())
+    kinds = [segment.kind for segment in segments]
+
+    assert "browser_action" in kinds
+    assert "browser_selector" in kinds
+    assert "url" in kinds
+
+
+def test_navigate_url_is_not_downgraded_to_browser_text_value():
+    segments = segment_record(_record('navigate(url="https://example.com")'), SegmentationConfig())
+
+    assert {segment.kind for segment in segments} == {"browser_action", "url"}
+
+
+def test_multiline_sql_emits_all_major_clauses():
+    segments = segment_record(_record("SELECT email\nFROM users\nWHERE active = true\nLIMIT 10"), SegmentationConfig())
+    sql_texts = [segment.text for segment in segments if segment.kind == "sql_clause"]
+
+    assert sql_texts == ["SELECT email", "FROM users", "WHERE active = true", "LIMIT 10"]
+
+
+def test_mixed_explanation_and_fenced_sql_keeps_prose_and_sql_separate():
+    raw_text = "Explain first.\n```sql\nSELECT * FROM users;\n```\nThen mention the caveat."
+    segments = segment_record(_record(raw_text), SegmentationConfig())
+
+    assert "unknown_text" in {segment.kind for segment in segments}
+    assert "sql_clause" in {segment.kind for segment in segments}
+    assert "code_statement" not in {segment.kind for segment in segments}
+
+
+def test_mixed_explanation_and_inline_browser_action_keep_action_separate():
+    segments = segment_record(_record('Explain it, then click(selector="#submit").'), SegmentationConfig())
+
+    assert [segment.kind for segment in segments] == ["unknown_text", "browser_action", "browser_selector", "unknown_text"]
 
 
 def test_uncovered_plain_text_uses_unknown_fallback_only():

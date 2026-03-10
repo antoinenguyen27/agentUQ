@@ -84,14 +84,17 @@ def test_pretty_summary_includes_explanatory_event_thresholds():
     assert result.resolved_thresholds is not None
     assert "Summary" in rendered
     assert "mode: realized" in rendered
-    assert "score:" in rendered
+    assert "aggregate_primary_score:" in rendered
+    assert "score_note: aggregate over full emitted path; compare segments for operational risk" in rendered
     assert "action:" in rendered
+    assert "top_risk:" in rendered
+    assert "risk_basis:" in rendered
     assert "rationale:" in rendered
     assert "capability: full" in rendered
     assert "Segments" in rendered
     assert "tool_argument_leaf" in rendered
     assert "ARGUMENT_VALUE_UNCERTAIN" in rendered
-    assert "spike_surprise=" in rendered
+    assert "action_head_surprise=" in rendered
 
 
 def test_pretty_compact_omits_segment_section_for_quiet_result():
@@ -106,6 +109,34 @@ def test_pretty_compact_omits_segment_section_for_quiet_result():
     assert "capability: full" in rendered
     assert "Segments" not in rendered
     assert "Highlights" not in rendered
+
+
+def test_pretty_renders_cluster_events_from_actual_trigger_details():
+    record = GenerationRecord(
+        provider="openai",
+        transport="direct_api",
+        model="gpt-test",
+        temperature=0.0,
+        top_p=1.0,
+        raw_text="hello",
+        selected_tokens=["hello"],
+        selected_logprobs=[-0.2],
+        top_logprobs=[[TopToken(token="hello", logprob=-0.2), TopToken(token="hullo", logprob=-0.21), TopToken(token="hey", logprob=-0.22)]],
+        structured_blocks=[StructuredBlock(type="output_text", text="hello", metadata={"role": "final"})],
+        metadata={"request_logprobs": True, "request_topk": 3, "deterministic": True},
+    )
+    capability = CapabilityReport(
+        selected_token_logprobs=True,
+        topk_logprobs=True,
+        topk_k=3,
+        structured_blocks=True,
+        request_attempted_logprobs=True,
+        request_attempted_topk=3,
+    )
+    rendered = Analyzer(UQConfig(mode="canonical", tolerance="strict")).analyze_step(record, capability).pretty()
+
+    assert "low_margin_run_max=1 >= min_run=1" in rendered
+    assert "mean_margin_log" not in rendered
 
 
 def test_pretty_debug_can_show_all_thresholds():

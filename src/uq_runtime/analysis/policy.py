@@ -76,7 +76,7 @@ class PolicyEngine:
                 return Action.RETRY_STEP_WITH_CONSTRAINTS
         if ctx.segment.kind in {"tool_argument_leaf", "json_leaf", "browser_text_value"} and "ARGUMENT_VALUE_UNCERTAIN" in event_types:
             return Action.REGENERATE_SEGMENT
-        if ctx.segment.kind in {"browser_selector", "url", "identifier"} and {"LOW_PROB_SPIKE", "LOW_MARGIN_CLUSTER"} & event_types:
+        if ctx.segment.kind in {"browser_selector", "url", "identifier", "path", "shell_flag", "shell_value"} and {"LOW_PROB_SPIKE", "LOW_MARGIN_CLUSTER"} & event_types:
             return Action.ASK_USER_CONFIRMATION if preset != "aggressive" else Action.REGENERATE_SEGMENT
         if ctx.segment.kind == "sql_clause" and highest in {EventSeverity.HIGH, EventSeverity.CRITICAL}:
             return Action.DRY_RUN_VERIFY

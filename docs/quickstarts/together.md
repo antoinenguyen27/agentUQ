@@ -45,14 +45,14 @@ print(result.pretty())
 ```text
 Summary
   mode: canonical
-  reason: auto-selected canonical mode from strictly greedy metadata
-  score: 2.933 g_nll
+  reason: auto-selected canonical mode from strict greedy parameter inference
+  aggregate_primary_score: 2.933 g_nll
   action: continue
   rationale: Policy preset balanced selected continue based on segment events.
   capability: full
 
 Segments
-  browser_action [informational] -> continue
+  browser_action [critical_action] -> continue
     text: click("text=Submit")
     metrics: score=2.933 avg_surprise=0.367 max_surprise=1.144 mean_entropy=0.883
     events: none

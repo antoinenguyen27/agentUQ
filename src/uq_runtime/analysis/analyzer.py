@@ -33,13 +33,16 @@ class Analyzer:
         temp = record.temperature
         top_p = record.top_p
         deterministic = self.config.deterministic
+        deterministic_source = "config"
         if deterministic is None:
             if record.metadata.get("deterministic") is not None:
                 deterministic = bool(record.metadata.get("deterministic"))
+                deterministic_source = "explicit_metadata"
             elif temp is not None and top_p is not None:
                 deterministic = math.isclose(temp, self.config.canonical_temperature_max, abs_tol=1e-9) and math.isclose(
                     top_p, self.config.canonical_top_p_min, abs_tol=1e-9
                 )
+                deterministic_source = "parameter_inference"
         canonical_ready = (
             deterministic is True
             and temp is not None
@@ -69,7 +72,11 @@ class Analyzer:
         events: list[Event] = []
         if requested == "auto":
             if canonical_ready:
-                return "canonical", "auto-selected canonical mode from strictly greedy metadata", events
+                if deterministic_source == "explicit_metadata":
+                    return "canonical", "auto-selected canonical mode from explicit deterministic metadata", events
+                if deterministic_source == "parameter_inference":
+                    return "canonical", "auto-selected canonical mode from strict greedy parameter inference", events
+                return "canonical", "auto-selected canonical mode from strict greedy configuration", events
             return "realized", "auto-selected realized mode because strict greedy conditions were missing", events
         if requested == "realized":
             return "realized", "configured realized mode", events

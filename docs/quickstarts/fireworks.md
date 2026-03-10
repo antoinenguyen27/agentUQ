@@ -47,14 +47,14 @@ print(result.pretty())
 ```text
 Summary
   mode: canonical
-  reason: auto-selected canonical mode from strictly greedy metadata
-  score: 3.844 g_nll
+  reason: auto-selected canonical mode from explicit deterministic metadata
+  aggregate_primary_score: 3.844 g_nll
   action: dry_run_verify
   rationale: Policy preset balanced selected dry_run_verify based on segment events.
   capability: full
 
 Segments
-  sql_clause [important_action] -> dry_run_verify
+  sql_clause [critical_action] -> dry_run_verify
     text: WHERE active = true
     metrics: score=1.922 avg_surprise=0.641 max_surprise=4.182 mean_entropy=1.021
     events:

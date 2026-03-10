@@ -42,41 +42,91 @@ def _capability_summary(result: UQResult) -> str:
     return f"{level} ({'; '.join(notes)})"
 
 
-def _event_detail(segment: SegmentResult, event: Event, result: UQResult) -> str | None:
-    thresholds = result.resolved_thresholds
-    if thresholds is None:
-        return None
-    metrics = segment.metrics
-    priority = segment.priority
+def _action_rank(action: Action) -> int:
+    order = {
+        Action.CONTINUE: 0,
+        Action.CONTINUE_WITH_ANNOTATION: 1,
+        Action.REGENERATE_SEGMENT: 2,
+        Action.RETRY_STEP: 3,
+        Action.RETRY_STEP_WITH_CONSTRAINTS: 4,
+        Action.DRY_RUN_VERIFY: 5,
+        Action.ASK_USER_CONFIRMATION: 6,
+        Action.BLOCK_EXECUTION: 7,
+        Action.ESCALATE_TO_HUMAN: 8,
+        Action.EMIT_WEBHOOK: 9,
+        Action.CUSTOM: 10,
+    }
+    return order[action]
+
+
+def _top_risk_segments(result: UQResult) -> list[SegmentResult]:
+    if not result.segments:
+        return []
+    max_rank = max(_action_rank(segment.recommended_action) for segment in result.segments)
+    risky = [segment for segment in result.segments if _action_rank(segment.recommended_action) == max_rank]
+    return sorted(risky, key=lambda segment: (_action_rank(segment.recommended_action), len(segment.events), segment.metrics.max_surprise), reverse=True)
+
+
+def _risk_driver_label(result: UQResult) -> str:
+    drivers = [segment for segment in _top_risk_segments(result) if segment.recommended_action == result.action]
+    if not drivers:
+        return "none"
+    if all(segment.priority in {"informational", "low_priority"} for segment in drivers):
+        return "informational_only"
+    return "action_bearing"
+
+
+def _risk_basis(result: UQResult) -> str:
+    drivers = [segment for segment in _top_risk_segments(result) if segment.recommended_action == result.action]
+    if not drivers:
+        return "none"
+    return ", ".join(f"{segment.id}:{segment.kind}" for segment in drivers)
+
+
+def _event_detail(_segment: SegmentResult, event: Event, _result: UQResult) -> str | None:
+    details = event.details or {}
     if event.type == "LOW_MARGIN_CLUSTER":
         return (
-            f"low_margin_run_max={metrics.low_margin_run_max} >= min_run={thresholds.min_run}; "
-            f"mean_margin_log={_fmt(metrics.mean_margin_log)} < low_margin_log={_fmt(thresholds.low_margin_log[priority])}"
+            f"low_margin_run_max={details.get('low_margin_run_max')} >= min_run={details.get('min_run')}; "
+            f"low_margin_rate={_fmt(details.get('low_margin_rate'))} threshold={_fmt(details.get('threshold'))}"
         )
     if event.type == "HIGH_ENTROPY_CLUSTER":
         return (
-            f"high_entropy_run_max={metrics.high_entropy_run_max} >= min_run={thresholds.min_run}; "
-            f"mean_entropy_hat={_fmt(metrics.mean_entropy_hat)} > entropy={_fmt(thresholds.entropy[priority])}"
+            f"high_entropy_run_max={details.get('high_entropy_run_max')} >= min_run={details.get('min_run')}; "
+            f"high_entropy_rate={_fmt(details.get('high_entropy_rate'))} threshold={_fmt(details.get('threshold'))}"
         )
     if event.type == "LOW_PROB_SPIKE":
-        return f"max_surprise={_fmt(metrics.max_surprise)} >= spike_surprise={_fmt(thresholds.spike_surprise[priority])}"
+        return f"max_surprise={_fmt(details.get('max_surprise'))} >= spike_surprise={_fmt(details.get('threshold'))}"
     if event.type == "TAIL_RISK_HEAVY":
-        return f"tail_surprise_mean={_fmt(metrics.tail_surprise_mean)} >= tail_surprise={_fmt(thresholds.tail_surprise[priority])}"
+        return f"tail_surprise_mean={_fmt(details.get('tail_surprise_mean'))} >= tail_surprise={_fmt(details.get('threshold'))}"
     if event.type == "OFF_TOP1_BURST":
-        return (
-            f"off_top1_rate={_fmt(metrics.off_top1_rate)} >= off_top1_rate={_fmt(thresholds.off_top1_rate[priority])} "
-            f"or off_top1_run_max={metrics.off_top1_run_max} >= min_run={thresholds.min_run}"
-        )
+        if details.get("trigger") == "off_top1_run":
+            return f"off_top1_run_max={details.get('off_top1_run_max')} >= min_run={details.get('min_run')}"
+        return f"off_top1_rate={_fmt(details.get('off_top1_rate'))} >= off_top1_rate={_fmt(details.get('threshold'))}"
     if event.type == "ACTION_HEAD_UNCERTAIN":
-        return (
-            f"mean_margin_log={_fmt(metrics.mean_margin_log)} < low_margin_log={_fmt(thresholds.low_margin_log[priority])} "
-            f"or avg_surprise={_fmt(metrics.avg_surprise)} > action_head_surprise={_fmt(thresholds.action_head_surprise[priority])}"
-        )
+        reasons: list[str] = []
+        triggers = details.get("trigger", [])
+        if "mean_margin_log" in triggers:
+            reasons.append(
+                f"mean_margin_log={_fmt(details.get('mean_margin_log'))} < low_margin_log={_fmt(details.get('low_margin_threshold'))}"
+            )
+        if "avg_surprise" in triggers:
+            reasons.append(
+                f"avg_surprise={_fmt(details.get('avg_surprise'))} > action_head_surprise={_fmt(details.get('action_head_surprise'))}"
+            )
+        return " and ".join(reasons) if reasons else None
     if event.type == "ARGUMENT_VALUE_UNCERTAIN":
-        return (
-            f"avg_surprise={_fmt(metrics.avg_surprise)} >= action_head_surprise={_fmt(thresholds.action_head_surprise[priority])} "
-            f"or max_surprise={_fmt(metrics.max_surprise)} >= spike_surprise={_fmt(thresholds.spike_surprise[priority])}"
-        )
+        reasons = []
+        triggers = details.get("trigger", [])
+        if "avg_surprise" in triggers:
+            reasons.append(
+                f"avg_surprise={_fmt(details.get('avg_surprise'))} >= action_head_surprise={_fmt(details.get('action_head_surprise'))}"
+            )
+        if "max_surprise" in triggers:
+            reasons.append(
+                f"max_surprise={_fmt(details.get('max_surprise'))} >= spike_surprise={_fmt(details.get('spike_surprise'))}"
+            )
+        return " and ".join(reasons) if reasons else None
     return None
 
 
@@ -155,12 +205,18 @@ def _threshold_summary(segment: SegmentResult, result: UQResult) -> str | None:
 
 
 def _render_summary(lines: list[str], result: UQResult, verbosity: Verbosity) -> None:
+    top_risk = _top_risk_segments(result)
     lines.append("Summary")
     lines.append(f"  mode: {result.mode}")
     if result.diagnostics.mode_reason:
         lines.append(f"  reason: {result.diagnostics.mode_reason}")
-    lines.append(f"  score: {_fmt(result.primary_score)} {result.primary_score_type.value}")
+    lines.append(f"  aggregate_primary_score: {_fmt(result.primary_score)} {result.primary_score_type.value}")
+    lines.append("  score_note: aggregate over full emitted path; compare segments for operational risk")
     lines.append(f"  action: {result.action.value}")
+    if top_risk:
+        lines.append(f"  top_risk: {top_risk[0].kind} [{top_risk[0].priority}] -> {top_risk[0].recommended_action.value}")
+    lines.append(f"  action_driver: {_risk_driver_label(result)}")
+    lines.append(f"  risk_basis: {_risk_basis(result)}")
     if result.decision is not None:
         lines.append(f"  rationale: {result.decision.rationale}")
     lines.append(f"  capability: {_capability_summary(result)}")
@@ -197,7 +253,7 @@ def _render_compact_segments(lines: list[str], result: UQResult) -> None:
         return
     lines.append("")
     lines.append("Highlights")
-    for segment in segments:
+    for segment in _top_risk_segments(result) or segments:
         event_types = ", ".join(event.type for event in segment.events) or "none"
         lines.append(
             f"  {segment.kind} [{segment.priority}] -> {segment.recommended_action.value} "

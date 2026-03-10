@@ -55,6 +55,15 @@ def test_auto_mode_picks_canonical_for_deterministic_run():
     result = analyzer.analyze_step(make_record(), make_capability())
     assert result.mode == "canonical"
     assert result.primary_score_type == PrimaryScoreType.G_NLL
+    assert result.diagnostics.mode_reason == "auto-selected canonical mode from explicit deterministic metadata"
+
+
+def test_auto_mode_reports_parameter_inference_when_metadata_is_absent():
+    analyzer = Analyzer(UQConfig(mode="auto"))
+    record = make_record(metadata={"request_logprobs": True, "request_topk": 2})
+    result = analyzer.analyze_step(record, make_capability())
+    assert result.mode == "canonical"
+    assert result.diagnostics.mode_reason == "auto-selected canonical mode from strict greedy parameter inference"
 
 
 def test_auto_mode_picks_realized_when_temperature_is_high():
