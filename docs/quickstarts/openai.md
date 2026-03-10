@@ -51,6 +51,28 @@ For canonical mode, keep the request strictly greedy: `temperature=0`, `top_p=1`
 
 For a fuller diagnostic view, use `result.pretty(verbosity="debug", show_thresholds="all")`.
 
+## Act on the result
+
+```python
+from uq_runtime.schemas.results import Action
+
+decision = result.decision
+
+if decision.action == Action.CONTINUE:
+    run_next_step()
+elif decision.action == Action.CONTINUE_WITH_ANNOTATION:
+    logger.warning("AgentUQ flagged this step", extra={"uq_result": result.model_dump(mode="json")})
+    run_next_step()
+elif decision.action == Action.RETRY_STEP_WITH_CONSTRAINTS:
+    retry_with_tighter_prompt()
+elif decision.action == Action.DRY_RUN_VERIFY:
+    run_safe_validator(result)
+elif decision.action in {Action.ASK_USER_CONFIRMATION, Action.BLOCK_EXECUTION}:
+    stop_before_side_effect(result)
+```
+
+If you need per-segment control rather than one step-level branch, inspect `result.decision.segment_actions` and `result.segments`.
+
 ## Sample output excerpt
 
 ```text
@@ -74,4 +96,5 @@ Segments
 - Chat Completions: pass `logprobs=True` and `top_logprobs=k`.
 - Responses: include `message.output_text.logprobs`; do not assume function-call items carry token logprobs.
 - OpenAI-family tool calls are captured structurally, but tool-name/tool-argument segments require explicit token grounding rather than incidental mentions in assistant prose.
+- For the full runtime loop and customization model, see [Acting on decisions](../concepts/acting_on_decisions.md) and [Policies](../concepts/policies.md).
 - This example can be adapted into a local live smoke test, but AgentUQ does not run provider-backed tests in required OSS CI.

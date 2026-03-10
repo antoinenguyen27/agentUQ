@@ -4,6 +4,8 @@ Single-pass runtime reliability instrumentation for LLM agents using token logpr
 
 AgentUQ does not claim to know whether an output is true. It turns token logprobs into localized runtime signals that can change agent behavior: retry, regenerate a risky span, dry-run verify an action, block execution, or ask for user confirmation.
 
+It sits above having no gate at all, and below slower, more expensive layers such as LLM-as-a-judge, retrieval-backed verification, sandbox execution, or human review. The goal is to give agent developers a cheap first-pass gate that is grounded in the model's own probability signal and fast enough to run on every step.
+
 ## What it is for
 
 - Strictly greedy agent steps for canonical scoring, or any structured/action-bearing step in realized mode
@@ -18,9 +20,56 @@ AgentUQ does not claim to know whether an output is true. It turns token logprob
 
 ## Canonical vs realized
 
-- Canonical mode uses `G-NLL` and is only valid when the run is explicitly known to be greedy: `temperature=0`, `top_p=1`, and deterministic metadata.
+- Canonical mode uses `G-NLL` and is only valid when the run is explicitly known to be greedy: `temperature=0`, `top_p=1`, and deterministic metadata. This is the flagship scoring object revisited by [Aichberger et al. 2026](https://arxiv.org/abs/2412.15176v2) for uncertainty estimation in LLMs.
 - Realized mode uses realized-path NLL plus local token diagnostics on the actual emitted path.
 - AgentUQ does not fake `G-NLL` for sampled trajectories.
+
+## Why this works
+
+AgentUQ starts from the strongest black-box confidence signal an autoregressive model exposes for free: token logprobs.
+
+- In canonical mode, AgentUQ uses greedy-path likelihood (`G-NLL`) for steps that are explicitly known to be greedy.
+- In realized mode, AgentUQ uses realized-path NLL on the actual emitted tokens instead of pretending a sampled path was greedy.
+- Segmentation does not invent a new score. It localizes the same sequence-likelihood signal onto action-bearing spans such as SQL, tool arguments, selectors, URLs, paths, and shell flags.
+- Events and policy turn those localized signals into runtime actions.
+
+At the sequence level, AgentUQ is operating on the standard autoregressive quantity:
+
+```text
+NLL(y | x) = Σ_t -log p(y_t | x, y_<t)
+```
+
+For non-overlapping leaf segments, AgentUQ simply decomposes that same quantity over spans so the leaf scores sum back to the whole emitted response.
+
+## Where it sits in the reliability stack
+
+- No gate: fastest, cheapest, least safe
+- AgentUQ: single-pass, provider-native, localized, cheap enough to run on every step
+- Judge / verifier / retrieval / sandbox / human review: slower and more expensive, used selectively when AgentUQ says the extra check is worth paying for
+
+This is the intended operating model: let AgentUQ cheaply catch brittle or ambiguous steps, and reserve expensive verification for the steps that look risky.
+
+## Why this is still valuable when models can be confidently wrong
+
+Confident hallucinations are real. AgentUQ is valuable because it is a runtime gate, not because it is a truth oracle.
+
+- It is good at detecting brittle local generation, ambiguous action-bearing spans, and low-confidence stretches that are worth annotating, regenerating, or verifying.
+- It is especially useful on structured outputs, tool arguments, SQL, browser actions, shell commands, and other executed text where local token uncertainty is operationally meaningful.
+- It does not replace retrieval, semantic verification, sandboxing, or human review for high-probability factual errors or internally consistent confabulations.
+
+That is the right mental model: AgentUQ is the cheap first-pass gate that decides when a slower verifier should be invoked.
+
+## Research grounding
+
+AgentUQ's method choice is intentionally narrow and research-backed:
+
+- Greedy-path likelihood is a credible flagship object for strictly greedy runs, and recent work argues that it deserves more attention in LLM UQ: [Aichberger et al. 2026](https://arxiv.org/abs/2412.15176v2)
+- Token probabilities are a meaningful internal confidence signal, though not a perfect correctness estimator: [Kumar et al. 2024](https://aclanthology.org/2024.acl-long.20/)
+- Sequence likelihood is a strong black-box baseline, but raw sequence scoring alone is too blunt and wording-sensitive: [Lin et al. 2024](https://aclanthology.org/2024.emnlp-main.578/)
+- Local token uncertainty remains useful for selective generation and truthfulness-oriented ranking: [Vazhentsev et al. 2025](https://aclanthology.org/2025.naacl-long.113/)
+- Stronger meaning-level hallucination methods such as semantic entropy exist, but they usually need multiple samples and a higher runtime budget: [Farquhar et al. 2024](https://www.nature.com/articles/s41586-024-07421-0)
+
+AgentUQ's product claim is therefore modest but strong: use the best lightweight probability signal the model already exposes, use it honestly, localize it to the spans that matter, and trigger cheap control actions before reaching for heavier verification.
 
 ## Install
 
@@ -57,6 +106,7 @@ Live tests require local API keys and only assert structural invariants such as 
 ```python
 from uq_runtime.adapters.openai_chat import OpenAIChatAdapter
 from uq_runtime.analysis.analyzer import Analyzer
+from uq_runtime.schemas.results import Action
 from uq_runtime.schemas.config import UQConfig
 
 adapter = OpenAIChatAdapter()
@@ -73,6 +123,20 @@ record = adapter.capture(response, {
 result = analyzer.analyze_step(record, adapter.capability_report(response, {"logprobs": True, "top_logprobs": 5}))
 decision = result.decision
 print(result.pretty())
+
+if decision.action == Action.CONTINUE:
+    handle_success(response)
+elif decision.action == Action.CONTINUE_WITH_ANNOTATION:
+    logger.warning("AgentUQ flagged informational risk", extra={"uq_result": result.model_dump(mode="json")})
+    handle_success(response)
+elif decision.action == Action.REGENERATE_SEGMENT:
+    rerun_only_risky_span(result)
+elif decision.action in {Action.RETRY_STEP, Action.RETRY_STEP_WITH_CONSTRAINTS}:
+    retry_with_tighter_prompt_or_lower_temperature()
+elif decision.action == Action.DRY_RUN_VERIFY:
+    run_safe_validator_before_execution(result)
+elif decision.action in {Action.ASK_USER_CONFIRMATION, Action.BLOCK_EXECUTION}:
+    stop_before_side_effect(result)
 ```
 
 ## Core objects
@@ -82,6 +146,33 @@ print(result.pretty())
 - `Analyzer`: shared scoring, segmentation, eventing, and degradation logic
 - `Decision`: policy output with segment-level actions
 - `UQResult.pretty()`: human-readable multiline rendering for CLI/log usage
+
+## Close the loop
+
+AgentUQ is meant to drive runtime behavior, not just terminal output.
+
+The public loop is:
+
+1. capture the model response into a `GenerationRecord`
+2. analyze it with `Analyzer`
+3. read `result.decision.action`
+4. branch into your retry, verification, confirmation, or blocking path
+
+Use `result.decision.segment_actions` when you need the per-segment action map, and use the segment list when you need to inspect which exact span triggered the recommendation.
+
+As a practical default:
+
+- `continue`: proceed normally
+- `continue_with_annotation`: proceed, but log or attach the result to traces
+- `regenerate_segment`: rerun only the risky field or clause if your framework supports structured retry
+- `retry_step` / `retry_step_with_constraints`: rerun the model step, usually with tighter instructions or lower temperature
+- `dry_run_verify`: run a safe validator before executing the action
+- `ask_user_confirmation`: pause the workflow and surface the risky span to the user
+- `block_execution`: fail closed before any side effect
+
+Advanced actions such as `escalate_to_human`, `emit_webhook`, and `custom` are available in the action model, but are typically used through `custom_rules` and user-defined dispatch code rather than the default presets.
+
+See [Acting on decisions](docs/concepts/acting_on_decisions.md) for concrete loop patterns and integration examples.
 
 ## Pretty output
 
@@ -159,6 +250,13 @@ config = UQConfig(
 )
 ```
 
+Reach for the knobs in this order:
+
+- `policy` when you want a different default action behavior
+- `tolerance` when you want events to fire earlier or later
+- `thresholds` when you need numeric fine-tuning of one metric or priority class
+- `custom_rules` when the defaults are mostly right but a specific segment/event combination needs a different action
+
 ## Capability tiers
 
 - `full`: selected-token logprobs plus top-k logprobs
@@ -195,6 +293,8 @@ Default behavior is fail-loud on missing selected-token logprobs. Top-k gaps deg
 - [Capability tiers](docs/concepts/capability_tiers.md)
 - [Canonical vs realized](docs/concepts/canonical_vs_realized.md)
 - [Segmentation](docs/concepts/segmentation.md)
+- [Research grounding](docs/concepts/research_grounding.md)
+- [Acting on decisions](docs/concepts/acting_on_decisions.md)
 - [Policies](docs/concepts/policies.md)
 - [Tolerance](docs/concepts/tolerance.md)
 - [Testing](docs/concepts/testing.md)

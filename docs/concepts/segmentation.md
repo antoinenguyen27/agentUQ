@@ -2,6 +2,11 @@
 
 Whole-response scoring is too blunt for agent systems. AgentUQ segments generations into action-bearing spans so policy can target the risky part rather than the whole response.
 
+The simplest way to think about it is:
+
+- whole-response uncertainty is a smoke alarm
+- segmentation tells you which room
+
 ## Built-in segmentation
 
 - Literal-first roots: structured blocks, fenced code, inline code spans, exact ReAct labels, standalone snippet lines, and explicit snippet-intro tails such as `Query: ...`
@@ -32,3 +37,22 @@ Text containers such as final answers, observations, and reasoning blocks are st
 Inline literals that are explicit but not recognized as action-bearing are treated as transparent and absorbed back into the surrounding prose. Opaque block literals such as unclassified fenced blocks remain separate text segments so coverage is preserved without fragmenting prose into tiny slices.
 
 For OpenAI-compatible chat/responses surfaces, tool calls are often returned as structured metadata without token-level grounding. AgentUQ records those tool calls, but it does not synthesize `tool_name` or `tool_argument_leaf` segments by substring-matching assistant prose.
+
+## Why this matters in practice
+
+Consider a mixed final answer:
+
+- explanation prose
+- `SELECT *`
+- `FROM users;`
+- more explanation
+
+Without segmentation, a whole-response score can only tell you that some part of the answer looked brittle.
+
+With segmentation, AgentUQ can distinguish:
+
+- prose that might deserve annotation,
+- from SQL that might deserve dry-run verification or a stricter policy,
+- without pretending that the whole answer is one uniform risk object.
+
+That is what makes the signal operationally useful inside agent loops.

@@ -72,7 +72,8 @@ The current practical value is not “universal truth estimation.” It is:
 * **cheap ranking of risky steps**,
 * **early warning for brittle actions**,
 * **localized regeneration of the part most likely to fail**,
-* **instrumentation for agent developers and framework builders**.
+* **instrumentation for agent developers and framework builders**,
+* **a cheap first-pass gate that decides when slower verification is worth paying for**.
 
 This is real product value today.
 
@@ -92,6 +93,22 @@ It is materially weaker when:
 * the product is expected to act like a complete correctness oracle.
 
 The product must say this plainly in the README.
+
+Confident hallucinations do not invalidate the product. They define its boundary. The library is a runtime gate for brittle or ambiguous steps, not a proof system for semantic correctness.
+
+### 2.5 Where this sits in the reliability stack
+
+The intended deployment position is:
+
+* above having **no runtime gate** at all,
+* below **LLM-as-a-judge**, retrieval-backed verification, sandbox execution, or human review,
+* and cheap enough to run on **every model step** in an agent loop.
+
+The design goal is selective escalation:
+
+* use AgentUQ as the default low-latency gate,
+* trigger retries, annotations, dry-runs, or confirmations when the local signal is concerning,
+* escalate to slower and more expensive verification only when the step looks risky enough to justify the cost.
 
 ---
 
@@ -165,6 +182,7 @@ Cons:
 Decision:
 
 * **primary flagship method** for strictly greedy runs.
+* aligned with the recent argument in [Aichberger et al. 2026](https://arxiv.org/abs/2412.15176v2) that greedy-path NLL deserves renewed attention in LLM uncertainty estimation.
 
 #### B. Raw realized-path NLL / mean logprob / perplexity family
 
@@ -336,6 +354,12 @@ For a sampled or unknown-decoding segment:
 
 This is the primary fallback scalar.
 
+When non-overlapping leaf segments partition the emitted path, realized-path NLL decomposes additively across those leaves:
+
+* `R_NLL(step) = Σ_i R_NLL(seg_i)`
+
+This is why segmentation is mathematically honest: it localizes the same emitted-path likelihood object instead of inventing a separate score family for each span type.
+
 ### 7.4 Auxiliary normalized metrics
 
 Because raw sums scale with length, the product also computes:
@@ -425,6 +449,8 @@ Instead, policy decisions are driven by:
 Whole-trace scoring is too blunt for agent systems. Long sequences accumulate ordinary probability mass and hide the locally risky span that matters operationally.
 
 Therefore, the product treats segmentation as a first-class requirement, not a convenience.
+
+For non-overlapping leaf segments, segmentation does not change the underlying score family. It attributes the same sequence-likelihood object to the spans that matter operationally, such as SQL clauses, selectors, URLs, shell flags, and prose slices.
 
 ### 8.2 Segmentation hierarchy
 
@@ -808,7 +834,7 @@ The policy engine supports these actions:
 
 ### 10.6 Custom rule API
 
-Developers can define custom rules declaratively or programmatically.
+Developers can define custom rules declaratively.
 
 Declarative YAML example:
 
@@ -825,15 +851,14 @@ policies:
     then: ask_user_confirmation
 ```
 
-Programmatic example:
+Current implementation supports declarative `custom_rules` matched in order against:
 
-```python
-class MyPolicy(Policy):
-    def decide(self, ctx: DecisionContext) -> Action:
-        if ctx.segment.kind == "sql_clause" and "LOW_PROB_SPIKE" in ctx.events:
-            return Action.DRY_RUN_VERIFY
-        return Action.CONTINUE
-```
+* `segment_kind`
+* `segment_priority`
+* `events_any`
+* `severity_at_least`
+
+The first matching rule wins and overrides the built-in preset decision for that segment.
 
 ---
 
@@ -1298,8 +1323,8 @@ Acceptable public surface:
 
 ```python
 record = adapter.capture(response, request_meta)
-result = uq.analyze(record)
-decision = uq.decide(result)
+result = analyzer.analyze_step(record, capability_report)
+decision = result.decision
 ```
 
 or a wrapper form such as:
@@ -1497,7 +1522,7 @@ Use when:
 
 ### 14.3 Custom developer actions
 
-The engine supports custom action handlers:
+The engine supports custom action handlers in userland after `Decision` is returned:
 
 ```python
 def my_handler(decision: DecisionContext):
@@ -1823,6 +1848,8 @@ Required concept docs:
 
 * `capability_tiers.md`
 * `canonical_vs_realized.md`
+* `acting_on_decisions.md`
+* `research_grounding.md`
 * `segmentation.md`
 * `policies.md`
 * `troubleshooting.md`

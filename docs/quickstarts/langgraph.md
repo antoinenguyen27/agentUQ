@@ -32,6 +32,17 @@ print(f"should_interrupt_before_tool('weather_lookup'): {should_interrupt_before
 - Attach `uq_result` to graph state before any tool node with side effects.
 - OpenAI-compatible framework responses usually expose tool calls structurally but not token-grounded tool-call logprobs, so `should_interrupt_before_tool(...)` only trips when AgentUQ has an explicit grounded tool segment.
 
+## Beyond boolean interruption
+
+`should_interrupt_before_tool(...)` is the narrowest built-in guard. If you want fuller behavior, read the stored `UQResult` from state and branch on `result.decision.action` directly.
+
+That is the right pattern when you want to:
+
+- retry a model node,
+- dry-run verify a generated action,
+- attach annotation metadata without interrupting the graph,
+- or route risky steps to a confirmation node.
+
 ## Sample output excerpt
 
 ```text
@@ -54,4 +65,5 @@ Segments
 
 - If tool execution is not being interrupted, inspect the stored `uq_result` and segment actions in graph state.
 - Keep tool nodes separate from model nodes so AgentUQ can gate side effects cleanly.
+- For full action routing rather than `True`/`False` interruption, load the stored `UQResult` and branch on `result.decision.action`.
 - LangGraph-backed smoke checks are local-only and not a required contribution gate.
