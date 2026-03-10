@@ -1,8 +1,8 @@
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.analysis.segmentation import segment_record
-from uq_runtime.schemas.config import SegmentationConfig, UQConfig
-from uq_runtime.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
-from uq_runtime.schemas.results import Action
+from agentuq.analysis.analyzer import Analyzer
+from agentuq.analysis.segmentation import segment_record
+from agentuq.schemas.config import SegmentationConfig, UQConfig
+from agentuq.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
+from agentuq.schemas.results import Action
 
 
 def _record(raw_text: str, structured_blocks: list[StructuredBlock] | None = None) -> GenerationRecord:

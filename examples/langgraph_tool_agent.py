@@ -1,6 +1,6 @@
-from uq_runtime.integrations.langgraph_hook import enrich_graph_state, should_interrupt_before_tool
-from uq_runtime.schemas.config import UQConfig
-from uq_runtime.schemas.results import UQResult
+from agentuq.integrations.langgraph_hook import enrich_graph_state, should_interrupt_before_tool
+from agentuq.schemas.config import UQConfig
+from agentuq.schemas.results import UQResult
 
 
 class Response:

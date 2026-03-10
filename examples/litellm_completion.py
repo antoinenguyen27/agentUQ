@@ -1,5 +1,5 @@
-from uq_runtime.adapters.litellm import LiteLLMAdapter
-from uq_runtime.analysis.analyzer import Analyzer
+from agentuq.adapters.litellm import LiteLLMAdapter
+from agentuq.analysis.analyzer import Analyzer
 
 
 def main() -> None:

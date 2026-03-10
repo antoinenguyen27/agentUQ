@@ -1,16 +1,16 @@
-from uq_runtime.analysis.analyzer import Analyzer
+from agentuq.analysis.analyzer import Analyzer
 from pydantic import ValidationError
 
-from uq_runtime.schemas.config import TolerancePreset, UQConfig, resolve_thresholds
-from uq_runtime.schemas.errors import (
+from agentuq.schemas.config import TolerancePreset, UQConfig, resolve_thresholds
+from agentuq.schemas.errors import (
     LogprobsNotRequestedError,
     ProviderDroppedRequestedParameterError,
     SelectedTokenLogprobsUnavailableError,
     TopKLogprobsUnavailableError,
     UnsupportedForCanonicalModeError,
 )
-from uq_runtime.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
-from uq_runtime.schemas.results import Action
+from agentuq.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
+from agentuq.schemas.results import Action
 
 
 def record_with_tool(

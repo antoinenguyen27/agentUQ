@@ -1,5 +1,5 @@
-from uq_runtime.adapters.fireworks import FireworksAdapter
-from uq_runtime.analysis.analyzer import Analyzer
+from agentuq.adapters.fireworks import FireworksAdapter
+from agentuq.analysis.analyzer import Analyzer
 
 
 def main() -> None:

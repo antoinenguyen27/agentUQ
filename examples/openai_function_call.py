@@ -1,6 +1,6 @@
-from uq_runtime.adapters.openai_responses import OpenAIResponsesAdapter
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
+from agentuq.adapters.openai_responses import OpenAIResponsesAdapter
+from agentuq.analysis.analyzer import Analyzer
+from agentuq.schemas.config import UQConfig
 
 
 def main() -> None:

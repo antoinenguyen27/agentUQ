@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
-from uq_runtime.integrations.langchain_middleware import UQMiddleware
-from uq_runtime.schemas.results import UQResult
+from agentuq.integrations.langchain_middleware import UQMiddleware
+from agentuq.schemas.results import UQResult
 
 
 @dataclass

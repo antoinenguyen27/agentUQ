@@ -1,6 +1,6 @@
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
-from uq_runtime.schemas.records import CapabilityReport, GenerationRecord, TopToken
+from agentuq.analysis.analyzer import Analyzer
+from agentuq.schemas.config import UQConfig
+from agentuq.schemas.records import CapabilityReport, GenerationRecord, TopToken
 
 
 def test_react_and_sql_segmentation_are_detected():

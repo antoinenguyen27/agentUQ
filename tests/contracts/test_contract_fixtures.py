@@ -4,20 +4,20 @@ from pathlib import Path
 
 import pytest
 
-from uq_runtime.adapters.fireworks import FireworksAdapter
-from uq_runtime.adapters.gemini import GeminiAdapter
-from uq_runtime.adapters.litellm import LiteLLMAdapter
-from uq_runtime.adapters.openai_agents import OpenAIAgentsAdapter
-from uq_runtime.adapters.openai_chat import OpenAIChatAdapter
-from uq_runtime.adapters.openai_responses import OpenAIResponsesAdapter
-from uq_runtime.adapters.openrouter import OpenRouterAdapter
-from uq_runtime.adapters.together import TogetherAdapter
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.integrations.langchain_middleware import analyze_after_model_call, guard_before_tool_execution
-from uq_runtime.integrations.langgraph_hook import enrich_graph_state, should_interrupt_before_tool
-from uq_runtime.schemas.config import UQConfig
-from uq_runtime.schemas.errors import SelectedTokenLogprobsUnavailableError
-from uq_runtime.schemas.results import Action
+from agentuq.adapters.fireworks import FireworksAdapter
+from agentuq.adapters.gemini import GeminiAdapter
+from agentuq.adapters.litellm import LiteLLMAdapter
+from agentuq.adapters.openai_agents import OpenAIAgentsAdapter
+from agentuq.adapters.openai_chat import OpenAIChatAdapter
+from agentuq.adapters.openai_responses import OpenAIResponsesAdapter
+from agentuq.adapters.openrouter import OpenRouterAdapter
+from agentuq.adapters.together import TogetherAdapter
+from agentuq.analysis.analyzer import Analyzer
+from agentuq.integrations.langchain_middleware import analyze_after_model_call, guard_before_tool_execution
+from agentuq.integrations.langgraph_hook import enrich_graph_state, should_interrupt_before_tool
+from agentuq.schemas.config import UQConfig
+from agentuq.schemas.errors import SelectedTokenLogprobsUnavailableError
+from agentuq.schemas.results import Action
 
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"

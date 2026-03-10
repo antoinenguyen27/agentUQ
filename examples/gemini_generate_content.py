@@ -1,5 +1,5 @@
-from uq_runtime.adapters.gemini import GeminiAdapter
-from uq_runtime.analysis.analyzer import Analyzer
+from agentuq.adapters.gemini import GeminiAdapter
+from agentuq.analysis.analyzer import Analyzer
 
 
 def main() -> None:

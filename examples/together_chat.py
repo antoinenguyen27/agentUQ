@@ -1,5 +1,5 @@
-from uq_runtime.adapters.together import TogetherAdapter
-from uq_runtime.analysis.analyzer import Analyzer
+from agentuq.adapters.together import TogetherAdapter
+from agentuq.analysis.analyzer import Analyzer
 
 
 def main() -> None:

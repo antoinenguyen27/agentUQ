@@ -1,4 +1,4 @@
-from uq_runtime.utils.sql_parser import is_sql_statement, split_sql_clauses
+from agentuq.utils.sql_parser import is_sql_statement, split_sql_clauses
 
 
 def test_sql_statement_recognizer_rejects_explanatory_prose():

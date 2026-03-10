@@ -1,7 +1,7 @@
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
-from uq_runtime.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
-from uq_runtime.schemas.results import Action, PrimaryScoreType
+from agentuq.analysis.analyzer import Analyzer
+from agentuq.schemas.config import UQConfig
+from agentuq.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
+from agentuq.schemas.results import Action, PrimaryScoreType
 
 
 def make_record(**overrides):

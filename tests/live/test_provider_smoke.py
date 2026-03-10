@@ -4,16 +4,16 @@ import os
 
 import pytest
 
-from uq_runtime.adapters.fireworks import FireworksAdapter
-from uq_runtime.adapters.gemini import GeminiAdapter
-from uq_runtime.adapters.litellm import LiteLLMAdapter
-from uq_runtime.adapters.openai_agents import OpenAIAgentsAdapter, latest_raw_response, model_settings_with_logprobs
-from uq_runtime.adapters.openai_chat import OpenAIChatAdapter
-from uq_runtime.adapters.openai_responses import OpenAIResponsesAdapter
-from uq_runtime.adapters.openrouter import OpenRouterAdapter
-from uq_runtime.adapters.together import TogetherAdapter
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
+from agentuq.adapters.fireworks import FireworksAdapter
+from agentuq.adapters.gemini import GeminiAdapter
+from agentuq.adapters.litellm import LiteLLMAdapter
+from agentuq.adapters.openai_agents import OpenAIAgentsAdapter, latest_raw_response, model_settings_with_logprobs
+from agentuq.adapters.openai_chat import OpenAIChatAdapter
+from agentuq.adapters.openai_responses import OpenAIResponsesAdapter
+from agentuq.adapters.openrouter import OpenRouterAdapter
+from agentuq.adapters.together import TogetherAdapter
+from agentuq.analysis.analyzer import Analyzer
+from agentuq.schemas.config import UQConfig
 from tests.live.helpers import assert_live_result, require_live_env
 
 

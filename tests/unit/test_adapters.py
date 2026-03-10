@@ -1,7 +1,7 @@
-from uq_runtime.adapters.gemini import GeminiAdapter
-from uq_runtime.adapters.openai_chat import OpenAIChatAdapter
-from uq_runtime.adapters.openai_responses import OpenAIResponsesAdapter
-from uq_runtime.adapters.together import TogetherAdapter
+from agentuq.adapters.gemini import GeminiAdapter
+from agentuq.adapters.openai_chat import OpenAIChatAdapter
+from agentuq.adapters.openai_responses import OpenAIResponsesAdapter
+from agentuq.adapters.together import TogetherAdapter
 
 
 def test_openai_chat_adapter_normalizes_tool_calls():

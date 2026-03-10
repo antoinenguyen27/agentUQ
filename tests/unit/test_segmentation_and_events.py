@@ -1,7 +1,7 @@
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.schemas.config import UQConfig
-from uq_runtime.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
-from uq_runtime.schemas.results import Action
+from agentuq.analysis.analyzer import Analyzer
+from agentuq.schemas.config import UQConfig
+from agentuq.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
+from agentuq.schemas.results import Action
 
 
 def test_json_and_browser_segmentation():

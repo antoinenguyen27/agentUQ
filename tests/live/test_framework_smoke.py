@@ -4,9 +4,9 @@ import os
 
 import pytest
 
-from uq_runtime.integrations.langchain_middleware import UQMiddleware, analyze_after_model_call
-from uq_runtime.integrations.langgraph_hook import enrich_graph_state, should_interrupt_before_tool
-from uq_runtime.schemas.config import UQConfig
+from agentuq.integrations.langchain_middleware import UQMiddleware, analyze_after_model_call
+from agentuq.integrations.langgraph_hook import enrich_graph_state, should_interrupt_before_tool
+from agentuq.schemas.config import UQConfig
 from tests.live.helpers import require_live_env
 
 

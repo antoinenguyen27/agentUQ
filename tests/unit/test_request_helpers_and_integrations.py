@@ -1,19 +1,19 @@
 import asyncio
 from dataclasses import dataclass, field
 
-from uq_runtime.adapters.fireworks import FireworksAdapter
-from uq_runtime.adapters.gemini import GeminiAdapter
-from uq_runtime.adapters.litellm import LiteLLMAdapter, probe_litellm_capability
-from uq_runtime.adapters.openai_agents import OpenAIAgentsAdapter, latest_raw_response, model_settings_with_logprobs
-from uq_runtime.adapters.openrouter import OpenRouterAdapter, probe_openrouter_model
-from uq_runtime.adapters.together import TogetherAdapter
-from uq_runtime.analysis.analyzer import Analyzer
-from uq_runtime.integrations.langchain_middleware import UQMiddleware, analyze_after_model_call, guard_before_tool_execution
-from uq_runtime.integrations.langgraph_hook import enrich_graph_state, should_interrupt_before_tool
-from uq_runtime.request_params import request_params
-from uq_runtime.schemas.config import UQConfig
-from uq_runtime.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
-from uq_runtime.schemas.results import Action
+from agentuq.adapters.fireworks import FireworksAdapter
+from agentuq.adapters.gemini import GeminiAdapter
+from agentuq.adapters.litellm import LiteLLMAdapter, probe_litellm_capability
+from agentuq.adapters.openai_agents import OpenAIAgentsAdapter, latest_raw_response, model_settings_with_logprobs
+from agentuq.adapters.openrouter import OpenRouterAdapter, probe_openrouter_model
+from agentuq.adapters.together import TogetherAdapter
+from agentuq.analysis.analyzer import Analyzer
+from agentuq.integrations.langchain_middleware import UQMiddleware, analyze_after_model_call, guard_before_tool_execution
+from agentuq.integrations.langgraph_hook import enrich_graph_state, should_interrupt_before_tool
+from agentuq.request_params import request_params
+from agentuq.schemas.config import UQConfig
+from agentuq.schemas.records import CapabilityReport, GenerationRecord, StructuredBlock, TopToken
+from agentuq.schemas.results import Action
 
 
 def _chat_response() -> dict:

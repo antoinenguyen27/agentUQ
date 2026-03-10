@@ -1581,7 +1581,7 @@ The project should evaluate:
 
 ```text
 src/
-  uq_runtime/
+  agentuq/
     adapters/
       base.py
       openai_chat.py

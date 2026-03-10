@@ -1,5 +1,5 @@
-from uq_runtime.adapters.openai_agents import OpenAIAgentsAdapter, model_settings_with_logprobs
-from uq_runtime.analysis.analyzer import Analyzer
+from agentuq.adapters.openai_agents import OpenAIAgentsAdapter, model_settings_with_logprobs
+from agentuq.analysis.analyzer import Analyzer
 
 
 def main() -> None:

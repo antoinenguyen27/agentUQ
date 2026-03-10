@@ -1,5 +1,5 @@
-from uq_runtime.adapters.openrouter import OpenRouterAdapter
-from uq_runtime.analysis.analyzer import Analyzer
+from agentuq.adapters.openrouter import OpenRouterAdapter
+from agentuq.analysis.analyzer import Analyzer
 
 
 def main() -> None:
