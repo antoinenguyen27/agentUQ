@@ -1,4 +1,5 @@
 from agentuq.adapters.gemini import GeminiAdapter
+from agentuq.adapters.minimax import MiniMaxAdapter
 from agentuq.adapters.openai_chat import OpenAIChatAdapter
 from agentuq.adapters.openai_responses import OpenAIResponsesAdapter
 from agentuq.adapters.together import TogetherAdapter
@@ -90,3 +91,27 @@ def test_together_adapter_maps_top_logprobs():
     }
     record = TogetherAdapter().capture(response, {"logprobs": 2})
     assert record.top_logprobs and record.top_logprobs[0][0].token == "Paris"
+
+
+def test_minimax_adapter_delegates_to_openai_chat():
+    response = {
+        "id": "mm_1",
+        "model": "MiniMax-M2.5",
+        "choices": [
+            {
+                "message": {"role": "assistant", "content": "Paris"},
+                "logprobs": {
+                    "content": [
+                        {"token": "Paris", "logprob": -0.15, "top_logprobs": [{"token": "Paris", "logprob": -0.15}, {"token": "London", "logprob": -1.2}]},
+                    ]
+                },
+            }
+        ],
+    }
+    record = MiniMaxAdapter().capture(response, {"logprobs": True, "top_logprobs": 2})
+    assert record.provider == "minimax"
+    assert record.transport == "direct_api"
+    assert record.model == "MiniMax-M2.5"
+    assert record.selected_tokens == ["Paris"]
+    assert record.selected_logprobs == [-0.15]
+    assert record.top_logprobs and record.top_logprobs[0][1].token == "London"

@@ -39,7 +39,7 @@ Examples below assume the public package and import namespace `agentuq`.
 
 ## Integration status
 
-OpenAI Responses API is the stable integration path in the current docs. Every other documented provider, gateway, and framework integration is preview, including OpenAI Chat Completions, OpenRouter, LiteLLM, Gemini, Fireworks, Together, LangChain, LangGraph, and the OpenAI Agents SDK.
+OpenAI Responses API is the stable integration path in the current docs. Every other documented provider, gateway, and framework integration is preview, including OpenAI Chat Completions, OpenRouter, LiteLLM, Gemini, Fireworks, Together, MiniMax, LangChain, LangGraph, and the OpenAI Agents SDK.
 
 ## Minimal loop
 

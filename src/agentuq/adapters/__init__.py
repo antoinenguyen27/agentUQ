@@ -1,6 +1,7 @@
 from agentuq.adapters.fireworks import FireworksAdapter
 from agentuq.adapters.gemini import GeminiAdapter
 from agentuq.adapters.litellm import LiteLLMAdapter, probe_litellm_capability
+from agentuq.adapters.minimax import MiniMaxAdapter
 from agentuq.adapters.openai_agents import OpenAIAgentsAdapter, model_settings_with_logprobs
 from agentuq.adapters.openai_chat import OpenAIChatAdapter
 from agentuq.adapters.openai_responses import OpenAIResponsesAdapter
@@ -11,6 +12,7 @@ __all__ = [
     "FireworksAdapter",
     "GeminiAdapter",
     "LiteLLMAdapter",
+    "MiniMaxAdapter",
     "OpenAIAgentsAdapter",
     "OpenAIChatAdapter",
     "OpenAIResponsesAdapter",

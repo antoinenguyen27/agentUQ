@@ -31,6 +31,7 @@ For tier names such as `full` and `selected_only`, see [Capability tiers](capabi
 | Gemini | Preview | Yes, via `responseLogprobs=true` and `logprobsResult.chosenCandidates` | Yes, via `topCandidates` when requested | Limited text structure | No | Capability depends on `responseLogprobs`; no selected-token logprobs means no top-k diagnostics either |
 | Fireworks | Preview | Yes | Yes | OpenAI-compatible text structure | No | Logprobs may appear in multiple payload shapes; AgentUQ normalizes the supported variants |
 | Together | Preview | Yes | Yes | Text only in current normalization | No | Uses token arrays and top-logprob maps rather than OpenAI-style content items |
+| MiniMax | Preview | Yes | Yes | OpenAI-compatible text structure | No | Uses OpenAI-compatible format at `https://api.minimax.io/v1`; temperature must be in (0.0, 1.0] |
 
 ## OpenAI-compatible gateways
 
@@ -77,6 +78,7 @@ Instead:
 - Fireworks (`Preview`)
 - Gemini (`Preview`)
 - Together (`Preview`)
+- MiniMax (`Preview`)
 
 These surfaces are the most straightforward when you mainly care about emitted text spans such as prose, SQL, code, browser DSL, and shell-like snippets.
 
