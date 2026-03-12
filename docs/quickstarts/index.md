@@ -19,6 +19,7 @@ Use these pages when you already know which provider or framework surface you wa
 - [Gemini](gemini.md): `generate_content` and `logprobsResult` (`Preview`)
 - [Fireworks](fireworks.md): OpenAI-compatible chat completions with compatibility fallbacks (`Preview`)
 - [Together](together.md): chat completions with token arrays and top-logprob maps (`Preview`)
+- [MiniMax](minimax.md): OpenAI-compatible chat completions via `https://api.minimax.io/v1` (`Preview`)
 
 ## Framework and orchestration surfaces
 

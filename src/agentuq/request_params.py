@@ -58,4 +58,11 @@ def request_params(provider: str, mode: str = "auto", topk: int = 5, transport: 
             "temperature": 0.0 if deterministic else 0.7,
             "top_p": 1.0,
         }
+    if provider == "minimax":
+        return {
+            "logprobs": True,
+            "top_logprobs": topk,
+            "temperature": 0.01 if deterministic else 0.7,
+            "top_p": 1.0,
+        }
     raise ValueError(f"Unsupported provider for request helper: {provider}")
